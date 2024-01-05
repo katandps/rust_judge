@@ -9,6 +9,11 @@ edition = "2021"
 reqwest = { version = "0.11.23", features = ["blocking", "json"] }
 serde = "1.0.193"
 tokio = { version = "1.19.2", features = ["rt", "fs"] }
+clap = { version = "4.4.12", features = ["derive"] }
 
 [lib]
 path = "lib.rs"
+
+[[bin]]
+name = "cli"
+path = "main.rs"
