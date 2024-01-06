@@ -1,5 +1,5 @@
 [package]
-name = "rust_judge"
+name = "verify"
 version = "0.1.0"
 edition = "2021"
 
@@ -10,6 +10,8 @@ reqwest = { version = "0.11.23", features = ["blocking", "json"] }
 serde = "1.0.193"
 tokio = { version = "1.19.2", features = ["rt", "fs"] }
 clap = { version = "4.4.12", features = ["derive"] }
+verify_attr = { path = "../verify_attr" }
+verify_core = { path = "../verify_core" }
 
 [lib]
 path = "lib.rs"

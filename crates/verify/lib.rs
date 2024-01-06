@@ -1,5 +1,6 @@
 use reqwest::blocking;
-
+pub use verify_attr::aizu_online_judge;
+pub use verify_core::service::{AizuOnlineJudge, Service};
 pub fn judge() {}
 
 pub struct TestCase {

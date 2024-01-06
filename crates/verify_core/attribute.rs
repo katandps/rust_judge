@@ -1,5 +1,4 @@
 use proc_macro2::Span;
-use quote::ToTokens;
 use syn::{
     parse::{Parse, ParseStream},
     punctuated::Punctuated,
@@ -8,15 +7,17 @@ use syn::{
 
 #[derive(Debug)]
 pub struct VerifyAttribute {
-    problem_id: LitStr,
-    eps: Option<LitFloat>,
+    pub problem_id: LitStr,
+    pub epsilon: LitFloat,
+    pub time_limit: LitFloat,
 }
 
 impl Parse for VerifyAttribute {
     fn parse(input: ParseStream) -> syn::Result<Self> {
         let punc = Punctuated::<Meta, Token![,]>::parse_terminated(input)?;
         let mut problem_id = None;
-        let mut eps = None;
+        let mut epsilon = LitFloat::new("0.0", Span::call_site());
+        let mut time_limit = LitFloat::new("10.0", Span::call_site());
         for meta in punc.iter() {
             match meta {
                 Meta::NameValue(nv) => {
@@ -25,7 +26,8 @@ impl Parse for VerifyAttribute {
                         Some(ident) if ident == "problem_id" => {
                             problem_id = Some(parse_problem_id(nv)?)
                         }
-                        Some(ident) if ident == "eps" => eps = Some(parse_eps(nv)?),
+                        Some(ident) if ident == "eps" => epsilon = parse_eps(nv)?,
+                        Some(ident) if ident == "tl" => time_limit = parse_tl(nv)?,
                         _ => {
                             return Err(Error::new(
                                 Span::call_site(),
@@ -41,7 +43,11 @@ impl Parse for VerifyAttribute {
         let Some(problem_id) = problem_id else {
             return Err(Error::new(Span::call_site(), "problem_id is not specified"));
         };
-        Ok(VerifyAttribute { problem_id, eps })
+        Ok(VerifyAttribute {
+            problem_id,
+            epsilon,
+            time_limit,
+        })
     }
 }
 
@@ -55,12 +61,20 @@ fn parse_problem_id(nv: &MetaNameValue) -> syn::Result<LitStr> {
     }
 }
 fn parse_eps(nv: &MetaNameValue) -> syn::Result<LitFloat> {
-    dbg!(&nv.value);
     match &nv.value {
         Expr::Lit(lit) => match &lit.lit {
             Lit::Float(litfloat) => Ok(litfloat.clone()),
             _ => Err(Error::new(Span::call_site(), "eps must be float")),
         },
         _ => Err(Error::new(Span::call_site(), "eps is invalid")),
+    }
+}
+fn parse_tl(nv: &MetaNameValue) -> syn::Result<LitFloat> {
+    match &nv.value {
+        Expr::Lit(lit) => match &lit.lit {
+            Lit::Float(litfloat) => Ok(litfloat.clone()),
+            _ => Err(Error::new(Span::call_site(), "tl must be float")),
+        },
+        _ => Err(Error::new(Span::call_site(), "tl is invalid")),
     }
 }

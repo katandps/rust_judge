@@ -222,7 +222,7 @@ dependencies = [
 name = "example"
 version = "0.1.0"
 dependencies = [
- "verify_attr",
+ "verify",
 ]
 
 [[package]]
@@ -697,16 +697,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "rust_judge"
-version = "0.1.0"
-dependencies = [
- "clap",
- "reqwest",
- "serde",
- "tokio",
-]
-
-[[package]]
 name = "rustc-demangle"
 version = "0.1.23"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1005,6 +995,18 @@ name = "vcpkg"
 version = "0.2.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "accd4ea62f7bb7a82fe23066fb0957d48ef677f6eeb8215f372f52e48bb32426"
+
+[[package]]
+name = "verify"
+version = "0.1.0"
+dependencies = [
+ "clap",
+ "reqwest",
+ "serde",
+ "tokio",
+ "verify_attr",
+ "verify_core",
+]
 
 [[package]]
 name = "verify_attr"

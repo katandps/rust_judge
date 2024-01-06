@@ -18,7 +18,21 @@ pub enum VerifyStatus {
 }
 use std::fmt::{Display, Formatter, Result};
 
-impl Display for VerifyStatus {
+#[derive(Clone, Debug)]
+pub struct VerifyResult {
+    _success: bool,
+    _cases: Vec<JudgeResult>,
+}
+
+#[derive(Clone, Debug)]
+pub enum JudgeResult {
+    Accepted,
+    WrongAnswer,
+    RuntimeError,
+    TimeLimitExceeded,
+    InternalError,
+}
+impl Display for JudgeResult {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
         match self {
             Self::Accepted => write!(f, "AC"),
