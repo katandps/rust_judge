@@ -6,9 +6,6 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-reqwest = { version = "0.11.23", features = ["blocking", "json"] }
-serde = "1.0.193"
-tokio = { version = "1.19.2", features = ["rt", "fs"] }
 clap = { version = "4.4.12", features = ["derive"] }
 verify_attr = { path = "../verify_attr" }
 verify_core = { path = "../verify_core" }

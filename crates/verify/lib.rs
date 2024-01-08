@@ -1,4 +1,3 @@
-use reqwest::blocking;
 pub use verify_attr::aizu_online_judge;
 pub use verify_core::service::{AizuOnlineJudge, Service};
 pub fn judge() {}
@@ -33,8 +32,4 @@ impl Display for VerifyStatus {
             Self::TimeLimitExceeded => write!(f, "TLE"),
         }
     }
-}
-
-pub fn build_client() -> reqwest::Result<blocking::Client> {
-    blocking::Client::builder().build()
 }

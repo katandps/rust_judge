@@ -2,6 +2,7 @@
 
 use clap::{Parser, Subcommand};
 use std::path::PathBuf;
+use verify::{AizuOnlineJudge, Service};
 
 #[derive(Debug, Parser)]
 #[command(author, version, about, long_about = None)]
@@ -18,6 +19,7 @@ struct Cli {
 
 #[derive(Debug, Subcommand)]
 enum Commands {
+    Generate,
     List,
 }
 
@@ -46,6 +48,9 @@ fn main() {
     // matches just as you would the top level cmd
     match &cli.command {
         Some(Commands::List) => println!("list"),
+        Some(Commands::Generate) => {
+            AizuOnlineJudge::get_testcases("aplusb".into()).unwrap();
+        }
         None => {}
     }
 }
