@@ -4,7 +4,8 @@ use quote::quote;
 use syn::{parse_macro_input, ItemFn};
 use verify_core::{
     attribute::VerifyAttribute,
-    service::{save_verify_info, AizuOnlineJudge, Service},
+    save_verify_info,
+    service::{AizuOnlineJudge, Service},
 };
 
 #[proc_macro_attribute]

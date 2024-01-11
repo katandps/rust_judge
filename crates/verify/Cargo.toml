@@ -9,6 +9,8 @@ edition = "2021"
 clap = { version = "4.4.12", features = ["derive"] }
 verify_attr = { path = "../verify_attr" }
 verify_core = { path = "../verify_core" }
+log = "0.4.20"
+env_logger = "0.10.1"
 
 [lib]
 path = "lib.rs"

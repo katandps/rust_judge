@@ -1,14 +1,3 @@
-pub struct Problem {
-    _test_cases: Vec<TestCase>,
-    _time_limit_ms: i64,
-    _epsilon: Option<f64>,
-}
-
-pub struct TestCase {
-    _input: String,
-    _output: String,
-}
-
 pub enum VerifyStatus {
     Accepted,
     WrongAnswer,
@@ -20,11 +9,11 @@ use std::fmt::{Display, Formatter, Result};
 
 #[derive(Clone, Debug)]
 pub struct VerifyResult {
-    _success: bool,
-    _cases: Vec<JudgeResult>,
+    pub success: bool,
+    pub cases: Vec<JudgeResult>,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum JudgeResult {
     Accepted,
     WrongAnswer,

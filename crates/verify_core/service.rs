@@ -1,16 +1,21 @@
-use dirs::cache_dir;
 use proc_macro2::{Ident, TokenStream};
 use quote::quote;
-use serde::Deserialize;
-use std::fs::File;
-use std::io::Write;
-use std::{env::temp_dir, fs::create_dir_all, path::PathBuf, time::Duration};
+use serde::{Deserialize, Serialize};
+use std::{
+    fs::{create_dir_all, File},
+    io::{Read, Write},
+    path::PathBuf,
+    time::Duration,
+};
 
-use crate::attribute::VerifyAttribute;
+use crate::{
+    attribute::VerifyAttribute,
+    judge::{JudgeResult, VerifyResult},
+};
 
 pub trait Service {
     fn build(attr: VerifyAttribute, f: Ident) -> TokenStream;
-    fn get_testcases(problem_id: String) -> anyhow::Result<()>;
+    fn fetch_testcases(problem_id: String) -> anyhow::Result<()>;
     fn run(f: Ident) -> TokenStream {
         quote! {
             let case = "12345".as_bytes();
@@ -20,47 +25,73 @@ pub trait Service {
     }
     const SERVICE_NAME: &'static str;
 }
-pub fn save_verify_info<S: Service>(attr: &VerifyAttribute) -> anyhow::Result<()> {
-    let mut target = PathBuf::from(crate::target_directory()?);
-    target.push(crate::APP_NAME);
-    target.push(S::SERVICE_NAME);
-    create_dir_all(&target)?;
-    target.push(&attr.problem_id);
-    let mut file = File::create(&target)?;
-    file.flush()?;
-    file.write_all(serde_json::to_string(&attr)?.as_bytes())?;
-    Ok(())
-}
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 struct AOJTestCaseHeaders {
+    // problemId: String,
     headers: Vec<AOJTestCaseHeader>,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 struct AOJTestCaseHeader {
     serial: u32,
     name: String,
+    // inputSize: i64,
+    // outputSize:i64,
+    // score: i64,
 }
 
 pub struct AizuOnlineJudge;
 
 impl Service for AizuOnlineJudge {
-    fn get_testcases(problem_id: String) -> anyhow::Result<()> {
-        let mut problem_dir = app_cache_directory();
+    fn fetch_testcases(problem_id: String) -> anyhow::Result<()> {
+        let mut problem_dir = crate::app_cache_directory();
         problem_dir.push("aizu_online_judge");
         problem_dir.push(&problem_id);
         if !problem_dir.exists() {
-            create_dir_all(&problem_dir).ok();
+            create_dir_all(&problem_dir)?;
         }
+        let in_dir = problem_dir.join("in");
+        let out_dir = problem_dir.join("out");
+        create_dir_all(&in_dir)?;
+        create_dir_all(&out_dir)?;
+
         let url = format!("https://judgedat.u-aizu.ac.jp/testcases/{problem_id}/header");
-        let client = blocking_client()?;
+        let client = crate::blocking_client()?;
+
         let headers: AOJTestCaseHeaders = client
             .get(url)
             .timeout(Duration::from_secs(5))
             .send()?
             .json()?;
-        dbg!(headers);
+        File::create(Self::header_path(&problem_id))?
+            .write_all(serde_json::to_string(&headers)?.as_bytes())?;
+
+        for header in headers.headers {
+            let serial = header.serial;
+            let in_path = in_dir.join(&header.name).with_extension("in");
+            if !in_path.exists() {
+                let in_url =
+                    format!("https://judgedat.u-aizu.ac.jp/testcases/{problem_id}/{serial}/in");
+                let bytes = client
+                    .get(in_url)
+                    .timeout(Duration::from_secs(5))
+                    .send()?
+                    .bytes()?;
+                File::create(in_path)?.write_all(&bytes)?;
+            }
+            let out_path = out_dir.join(&header.name).with_extension("out");
+            if !out_path.exists() {
+                let out_url =
+                    format!("https://judgedat.u-aizu.ac.jp/testcases/{problem_id}/{serial}/out");
+                let bytes = client
+                    .get(out_url)
+                    .timeout(Duration::from_secs(5))
+                    .send()?
+                    .bytes()?;
+                File::create(out_path)?.write_all(&bytes)?;
+            }
+        }
         Ok(())
     }
 
@@ -75,14 +106,37 @@ impl Service for AizuOnlineJudge {
     }
     const SERVICE_NAME: &'static str = "aizu_online_judge";
 }
-fn app_cache_directory() -> PathBuf {
-    let mut path = cache_dir().unwrap_or_else(temp_dir);
-    path.push(crate::APP_NAME);
-    path
+
+impl AizuOnlineJudge {
+    fn problem_dir_path(problem_id: &str) -> PathBuf {
+        let mut problem_dir = crate::app_cache_directory();
+        problem_dir.push("aizu_online_judge");
+        problem_dir.push(problem_id);
+        problem_dir
+    }
+    fn header_path(problem_id: &str) -> PathBuf {
+        Self::problem_dir_path(problem_id)
+            .join("header")
+            .with_extension("json")
+    }
+
+    pub fn verify(attr: VerifyAttribute) -> anyhow::Result<VerifyResult> {
+        let mut buf = Vec::new();
+        File::open(Self::header_path(&attr.problem_id))?.read_to_end(&mut buf)?;
+        let headers: AOJTestCaseHeaders = serde_json::from_slice(&buf)?;
+        let cases: Vec<_> = headers
+            .headers
+            .iter()
+            .map(|_header| {
+                // todo verify
+                JudgeResult::Accepted
+            })
+            .collect();
+        let success = cases.iter().all(|result| result == &JudgeResult::Accepted);
+        Ok(VerifyResult { success, cases })
+    }
 }
-fn blocking_client() -> reqwest::Result<reqwest::blocking::Client> {
-    reqwest::blocking::Client::builder().build()
-}
+
 // pub struct LibraryChecker;
 
 // impl LibraryChecker {

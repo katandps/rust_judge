@@ -25,6 +25,7 @@ enum Commands {
 
 fn main() {
     let cli = Cli::parse();
+    env_logger::init();
 
     // You can check the value provided by positional arguments, or option arguments
     if let Some(name) = cli.name.as_deref() {
@@ -47,10 +48,19 @@ fn main() {
     // You can check for the existence of subcommands, and if found use their
     // matches just as you would the top level cmd
     match &cli.command {
-        Some(Commands::List) => println!("list"),
-        Some(Commands::Generate) => {
-            AizuOnlineJudge::get_testcases("aplusb".into()).unwrap();
-        }
+        Some(Commands::List) => list(),
+        Some(Commands::Generate) => generate(),
         None => {}
+    }
+}
+
+fn list() {
+    log::info!("list");
+}
+
+fn generate() {
+    let list = verify_core::load_verify_info::<AizuOnlineJudge>().unwrap();
+    for item in list {
+        AizuOnlineJudge::fetch_testcases(item.problem_id).unwrap();
     }
 }
