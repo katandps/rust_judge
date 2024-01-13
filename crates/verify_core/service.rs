@@ -1,5 +1,3 @@
-use proc_macro2::{Ident, TokenStream};
-use quote::quote;
 use serde::{Deserialize, Serialize};
 use std::{
     fs::{create_dir_all, File},
@@ -13,16 +11,12 @@ use crate::{
     judge::{JudgeResult, VerifyResult},
 };
 
+type SolveFunc = fn(&[u8], &mut [u8]);
+
 pub trait Service {
-    fn build(attr: VerifyAttribute, f: Ident) -> TokenStream;
+    fn save_verify_info(attr: &VerifyAttribute) -> anyhow::Result<()>;
     fn fetch_testcases(problem_id: String) -> anyhow::Result<()>;
-    fn run(f: Ident) -> TokenStream {
-        quote! {
-            let case = "12345".as_bytes();
-            let mut buf = Vec::new();
-            #f(case, &mut buf);
-        }
-    }
+    fn verify(attr: VerifyAttribute, f: SolveFunc) -> anyhow::Result<VerifyResult>;
     const SERVICE_NAME: &'static str;
 }
 
@@ -44,6 +38,18 @@ struct AOJTestCaseHeader {
 pub struct AizuOnlineJudge;
 
 impl Service for AizuOnlineJudge {
+    fn save_verify_info(attr: &VerifyAttribute) -> anyhow::Result<()> {
+        let mut target = PathBuf::from(crate::target_directory()?);
+        target.push(crate::APP_NAME);
+        target.push(Self::SERVICE_NAME);
+        create_dir_all(&target)?;
+        target.push(&attr.problem_id);
+        let mut file = File::create(&target)?;
+        file.flush()?;
+        file.write_all(serde_json::to_string(&attr)?.as_bytes())?;
+        Ok(())
+    }
+
     fn fetch_testcases(problem_id: String) -> anyhow::Result<()> {
         let mut problem_dir = crate::app_cache_directory();
         problem_dir.push("aizu_online_judge");
@@ -69,7 +75,7 @@ impl Service for AizuOnlineJudge {
 
         for header in headers.headers {
             let serial = header.serial;
-            let in_path = in_dir.join(&header.name).with_extension("in");
+            let in_path = header.in_path(&problem_id);
             if !in_path.exists() {
                 let in_url =
                     format!("https://judgedat.u-aizu.ac.jp/testcases/{problem_id}/{serial}/in");
@@ -80,7 +86,7 @@ impl Service for AizuOnlineJudge {
                     .bytes()?;
                 File::create(in_path)?.write_all(&bytes)?;
             }
-            let out_path = out_dir.join(&header.name).with_extension("out");
+            let out_path = header.out_path(&problem_id);
             if !out_path.exists() {
                 let out_url =
                     format!("https://judgedat.u-aizu.ac.jp/testcases/{problem_id}/{serial}/out");
@@ -94,15 +100,12 @@ impl Service for AizuOnlineJudge {
         }
         Ok(())
     }
-
-    fn build(_attr: VerifyAttribute, f: Ident) -> TokenStream {
-        // todo read attr file and verify with cache;
-        // dbg!(problem_id, eps, tl, &f);
-        quote! {
-            let case = "12345".as_bytes();
-            let mut buf = Vec::new();
-            #f(case, &mut buf);
-        }
+    fn verify(attr: VerifyAttribute, f: SolveFunc) -> anyhow::Result<VerifyResult> {
+        let mut buf = Vec::new();
+        dbg!(&Self::header_path(&attr.problem_id));
+        File::open(Self::header_path(&attr.problem_id))?.read_to_end(&mut buf)?;
+        let headers: AOJTestCaseHeaders = serde_json::from_slice(&buf)?;
+        Ok(headers.verify(&attr, f))
     }
     const SERVICE_NAME: &'static str = "aizu_online_judge";
 }
@@ -119,21 +122,55 @@ impl AizuOnlineJudge {
             .join("header")
             .with_extension("json")
     }
+}
 
-    pub fn verify(attr: VerifyAttribute) -> anyhow::Result<VerifyResult> {
-        let mut buf = Vec::new();
-        File::open(Self::header_path(&attr.problem_id))?.read_to_end(&mut buf)?;
-        let headers: AOJTestCaseHeaders = serde_json::from_slice(&buf)?;
-        let cases: Vec<_> = headers
+impl AOJTestCaseHeaders {
+    fn verify(&self, attr: &VerifyAttribute, f: SolveFunc) -> VerifyResult {
+        let cases: Vec<_> = self
             .headers
             .iter()
-            .map(|_header| {
-                // todo verify
-                JudgeResult::Accepted
-            })
+            .map(|header| header.verify(attr, f).unwrap_or(JudgeResult::InternalError))
             .collect();
         let success = cases.iter().all(|result| result == &JudgeResult::Accepted);
-        Ok(VerifyResult { success, cases })
+        VerifyResult { success, cases }
+    }
+}
+
+impl AOJTestCaseHeader {
+    fn verify(&self, attr: &VerifyAttribute, f: SolveFunc) -> anyhow::Result<JudgeResult> {
+        let in_path = self.in_path(&attr.problem_id);
+        let out_path = self.out_path(&attr.problem_id);
+        if in_path.exists() && out_path.exists() {
+            let (mut in_buf, mut out_buf) = (Vec::new(), Vec::new());
+            File::open(&in_path)?.read_to_end(&mut in_buf)?;
+            File::open(&out_path)?.read_to_end(&mut out_buf)?;
+            let mut actual = Vec::new();
+            f(&in_buf, &mut actual);
+            return if out_buf == actual {
+                Ok(JudgeResult::Accepted)
+            } else {
+                Ok(JudgeResult::WrongAnswer)
+            };
+        }
+        if !in_path.exists() {
+            log::warn!("in file is not found {}:{}", attr.problem_id, self.name);
+        }
+        if !out_path.exists() {
+            log::warn!("out file is not found {}:{}", attr.problem_id, self.name);
+        }
+        Ok(JudgeResult::InternalError)
+    }
+    fn in_path(&self, problem_id: &str) -> PathBuf {
+        AizuOnlineJudge::problem_dir_path(problem_id)
+            .join("in")
+            .join(&self.name)
+            .with_extension("in")
+    }
+    fn out_path(&self, problem_id: &str) -> PathBuf {
+        AizuOnlineJudge::problem_dir_path(problem_id)
+            .join("out")
+            .join(&self.name)
+            .with_extension("out")
     }
 }
 

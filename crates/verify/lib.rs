@@ -1,17 +1,6 @@
 pub use verify_attr::aizu_online_judge;
+pub use verify_core::attribute::VerifyAttribute;
 pub use verify_core::service::{AizuOnlineJudge, Service};
-pub fn judge() {}
-
-pub struct TestCase {
-    _input: String,
-    _output: String,
-}
-
-pub struct Problem {
-    _test_cases: Vec<TestCase>,
-    _time_limit_ms: i64,
-    _epsilon: Option<f64>,
-}
 
 pub enum VerifyStatus {
     Accepted,

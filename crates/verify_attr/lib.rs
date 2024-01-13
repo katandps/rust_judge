@@ -4,7 +4,6 @@ use quote::quote;
 use syn::{parse_macro_input, ItemFn};
 use verify_core::{
     attribute::VerifyAttribute,
-    save_verify_info,
     service::{AizuOnlineJudge, Service},
 };
 
@@ -31,16 +30,22 @@ fn verify_attr<S: Service>(attr: TokenStream, item: TokenStream) -> TokenStream 
         attr => {
             // dbg!(std::module_path!());
             let ast = parse_macro_input!(item as ItemFn);
-            save_verify_info::<S>(&attr)
+            S::save_verify_info(&attr)
                 .expect(format!("Failed to save verify info: {}", attr.problem_id).as_str());
             let fn_name = ast.sig.ident.clone();
-            let verify_name = Ident::new(&format!("verify_{fn_name}"), Span::call_site());
-            let verify = S::build(attr, fn_name);
+            let verify_name: Ident = Ident::new(&format!("verify_{fn_name}"), Span::call_site());
             let test_fn = quote! {
                 #[test]
                 #[ignore]
                 fn #verify_name() {
-                    #verify;
+                    fn verify_inner(read: &[u8], write: &mut [u8]) {
+                        #fn_name(read, write)
+                    }
+                    let attr = #attr;
+                    use ::verify::Service;
+                    let res = ::verify::AizuOnlineJudge::verify(attr, verify_inner);
+                    dbg!(&res);
+                    assert!(res.is_ok());
                 }
             };
             quote! {

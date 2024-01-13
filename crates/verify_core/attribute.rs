@@ -1,4 +1,5 @@
-use proc_macro2::Span;
+use proc_macro2::{Span, TokenStream};
+use quote::{quote, ToTokens};
 use serde::{Deserialize, Serialize};
 use syn::{
     parse::{Parse, ParseStream},
@@ -77,5 +78,21 @@ fn parse_tl(nv: &MetaNameValue) -> syn::Result<f64> {
             _ => Err(Error::new(Span::call_site(), "tl must be float")),
         },
         _ => Err(Error::new(Span::call_site(), "tl is invalid")),
+    }
+}
+
+impl ToTokens for VerifyAttribute {
+    fn to_tokens(&self, tokens: &mut TokenStream) {
+        let problem_id = self.problem_id.clone();
+        let epsilon = self.epsilon;
+        let time_limit = self.time_limit;
+        quote!(
+            ::verify::VerifyAttribute {
+                problem_id: #problem_id.to_string(),
+                epsilon: #epsilon,
+                time_limit: #time_limit
+            }
+        )
+        .to_tokens(tokens)
     }
 }

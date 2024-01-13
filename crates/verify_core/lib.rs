@@ -7,13 +7,7 @@ use attribute::VerifyAttribute;
 use dirs::cache_dir;
 use serde::Deserialize;
 use service::Service;
-use std::{
-    env::temp_dir,
-    fs::{create_dir_all, File},
-    io::{Read, Write},
-    path::PathBuf,
-    process::Command,
-};
+use std::{env::temp_dir, fs::File, io::Read, path::PathBuf, process::Command};
 
 const APP_NAME: &'static str = "rust_judge";
 
@@ -32,19 +26,6 @@ fn target_directory() -> anyhow::Result<String> {
         Err(Error::msg("Cargo command did not finish successful."))
     }
 }
-
-pub fn save_verify_info<S: Service>(attr: &VerifyAttribute) -> anyhow::Result<()> {
-    let mut target = PathBuf::from(target_directory()?);
-    target.push(APP_NAME);
-    target.push(S::SERVICE_NAME);
-    create_dir_all(&target)?;
-    target.push(&attr.problem_id);
-    let mut file = File::create(&target)?;
-    file.flush()?;
-    file.write_all(serde_json::to_string(&attr)?.as_bytes())?;
-    Ok(())
-}
-
 pub fn load_verify_info<S: Service>() -> anyhow::Result<Vec<VerifyAttribute>> {
     let mut target = PathBuf::from(target_directory()?);
     target.push(APP_NAME);
