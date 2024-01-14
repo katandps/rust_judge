@@ -11,7 +11,7 @@ use crate::{
     judge::{JudgeResult, VerifyResult},
 };
 
-type SolveFunc = fn(&[u8], &mut [u8]);
+type SolveFunc = fn(&[u8], &mut Vec<u8>);
 
 pub trait Service {
     fn save_verify_info(attr: &VerifyAttribute) -> anyhow::Result<()>;
@@ -102,7 +102,6 @@ impl Service for AizuOnlineJudge {
     }
     fn verify(attr: VerifyAttribute, f: SolveFunc) -> anyhow::Result<VerifyResult> {
         let mut buf = Vec::new();
-        dbg!(&Self::header_path(&attr.problem_id));
         File::open(Self::header_path(&attr.problem_id))?.read_to_end(&mut buf)?;
         let headers: AOJTestCaseHeaders = serde_json::from_slice(&buf)?;
         Ok(headers.verify(&attr, f))
@@ -136,17 +135,42 @@ impl AOJTestCaseHeaders {
     }
 }
 
+pub struct StaticAssertion;
+impl StaticAssertion {
+    pub fn assert(
+        mut expect: impl std::io::Read,
+        mut actual: impl std::io::Read,
+    ) -> anyhow::Result<bool> {
+        let (mut actual_values, mut expect_values) = (Vec::new(), Vec::new());
+        {
+            let mut buf = String::new();
+            expect.read_to_string(&mut buf)?;
+            for v in buf.split_ascii_whitespace() {
+                expect_values.push(v.to_string());
+            }
+        }
+        {
+            let mut buf = String::new();
+            actual.read_to_string(&mut buf)?;
+            for v in buf.split_ascii_whitespace() {
+                actual_values.push(v.to_string());
+            }
+        }
+        dbg!(&expect_values, &actual_values);
+        Ok(expect_values == actual_values)
+    }
+}
 impl AOJTestCaseHeader {
     fn verify(&self, attr: &VerifyAttribute, f: SolveFunc) -> anyhow::Result<JudgeResult> {
         let in_path = self.in_path(&attr.problem_id);
         let out_path = self.out_path(&attr.problem_id);
         if in_path.exists() && out_path.exists() {
-            let (mut in_buf, mut out_buf) = (Vec::new(), Vec::new());
+            let (mut in_buf, mut expect) = (Vec::new(), Vec::new());
             File::open(&in_path)?.read_to_end(&mut in_buf)?;
-            File::open(&out_path)?.read_to_end(&mut out_buf)?;
+            File::open(&out_path)?.read_to_end(&mut expect)?;
             let mut actual = Vec::new();
             f(&in_buf, &mut actual);
-            return if out_buf == actual {
+            return if StaticAssertion::assert(&expect[..], &actual[..])? {
                 Ok(JudgeResult::Accepted)
             } else {
                 Ok(JudgeResult::WrongAnswer)

@@ -1,9 +1,8 @@
 use std::io::{Read, Write};
 #[verify::aizu_online_judge(problem_id = "ITP1_1_A")]
-fn solve(mut read: impl Read, mut write: impl Write) {
-    let mut buf = String::new();
-    read.read_to_string(&mut buf).ok();
-    write!(write, "{buf}").ok();
+fn solve(_read: impl Read, mut write: impl Write) {
+    writeln!(write, "Hello World").ok();
+    write.flush().ok();
 }
 
 #[test]

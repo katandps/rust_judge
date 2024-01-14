@@ -38,14 +38,14 @@ fn verify_attr<S: Service>(attr: TokenStream, item: TokenStream) -> TokenStream 
                 #[test]
                 #[ignore]
                 fn #verify_name() {
-                    fn verify_inner(read: &[u8], write: &mut [u8]) {
+                    fn verify_inner(read: &[u8], write: &mut Vec<u8>) {
                         #fn_name(read, write)
                     }
                     let attr = #attr;
                     use ::verify::Service;
                     let res = ::verify::AizuOnlineJudge::verify(attr, verify_inner);
-                    dbg!(&res);
                     assert!(res.is_ok());
+                    assert!(res.unwrap().success);
                 }
             };
             quote! {
