@@ -20,3 +20,15 @@ impl Solver for Itp1_1A {
         write.flush().ok();
     }
 }
+
+#[derive(AizuOnlineJudge)]
+pub struct Itp1_1A_TLE;
+impl Solver for Itp1_1A_TLE {
+    const PROBLEM_ID: &'static str = "ITP1_1_A";
+    const TIME_LIMIT_MILLIS: u64 = 100;
+    fn solve(_read: impl Read, mut write: impl Write) {
+        std::thread::sleep(std::time::Duration::from_secs(1));
+        writeln!(write, "Hello World").ok();
+        write.flush().ok();
+    }
+}

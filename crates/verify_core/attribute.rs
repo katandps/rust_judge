@@ -11,7 +11,7 @@ use syn::{
 pub struct VerifyAttribute {
     pub problem_id: String,
     pub epsilon: f64,
-    pub time_limit: f64,
+    pub time_limit_ms: u64,
 }
 
 impl Parse for VerifyAttribute {
@@ -19,7 +19,7 @@ impl Parse for VerifyAttribute {
         let punc = Punctuated::<Meta, Token![,]>::parse_terminated(input)?;
         let mut problem_id = None;
         let mut epsilon = 0.0;
-        let mut time_limit = 10.0;
+        let mut time_limit_ms = 10000;
         for meta in punc.iter() {
             match meta {
                 Meta::NameValue(nv) => {
@@ -29,7 +29,7 @@ impl Parse for VerifyAttribute {
                             problem_id = Some(parse_problem_id(nv)?)
                         }
                         Some(ident) if ident == "eps" => epsilon = parse_eps(nv)?,
-                        Some(ident) if ident == "tl" => time_limit = parse_tl(nv)?,
+                        Some(ident) if ident == "tl" => time_limit_ms = parse_tl(nv)?,
                         _ => {
                             return Err(Error::new(
                                 Span::call_site(),
@@ -48,7 +48,7 @@ impl Parse for VerifyAttribute {
         Ok(VerifyAttribute {
             problem_id,
             epsilon,
-            time_limit,
+            time_limit_ms,
         })
     }
 }
@@ -71,10 +71,10 @@ fn parse_eps(nv: &MetaNameValue) -> syn::Result<f64> {
         _ => Err(Error::new(Span::call_site(), "eps is invalid")),
     }
 }
-fn parse_tl(nv: &MetaNameValue) -> syn::Result<f64> {
+fn parse_tl(nv: &MetaNameValue) -> syn::Result<u64> {
     match &nv.value {
         Expr::Lit(lit) => match &lit.lit {
-            Lit::Float(litfloat) => litfloat.base10_parse(),
+            Lit::Int(litint) => litint.base10_parse(),
             _ => Err(Error::new(Span::call_site(), "tl must be float")),
         },
         _ => Err(Error::new(Span::call_site(), "tl is invalid")),
@@ -85,12 +85,12 @@ impl ToTokens for VerifyAttribute {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         let problem_id = self.problem_id.clone();
         let epsilon = self.epsilon;
-        let time_limit = self.time_limit;
+        let time_limit_ms = self.time_limit_ms;
         quote!(
             ::verify::VerifyAttribute {
                 problem_id: #problem_id.to_string(),
                 epsilon: #epsilon,
-                time_limit: #time_limit
+                time_limit_ms: #time_limit_ms
             }
         )
         .to_tokens(tokens)

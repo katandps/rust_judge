@@ -17,5 +17,5 @@ cargo test --features verify -- --ignored
 ## doc
 
 ```sh
-cargo doc --workspace --no-deps --features verify
+cargo doc --workspace --no-deps --features verify_result
 ```

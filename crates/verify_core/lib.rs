@@ -21,7 +21,7 @@ const APP_NAME: &'static str = "rust_judge";
 pub trait Solver {
     const PROBLEM_ID: &'static str;
     const EPSILON: f64 = 0f64;
-    const TIME_LIMIT: f64 = 10.0f64;
+    const TIME_LIMIT_MILLIS: u64 = 10000;
     fn solve(read: impl Read, write: impl Write);
 }
 
@@ -39,7 +39,7 @@ pub trait Verifiable: Solver {
             VerifyAttribute {
                 problem_id: Self::PROBLEM_ID.to_string(),
                 epsilon: Self::EPSILON,
-                time_limit: Self::TIME_LIMIT,
+                time_limit_ms: Self::TIME_LIMIT_MILLIS,
             },
             Self::verify_inner,
         )

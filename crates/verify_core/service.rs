@@ -1,3 +1,7 @@
+use crate::{
+    attribute::VerifyAttribute,
+    judge::{JudgeResult, JudgeStatus, VerifyResult},
+};
 use serde::{Deserialize, Serialize};
 use std::{
     fs::{create_dir_all, File},
@@ -5,11 +9,7 @@ use std::{
     path::PathBuf,
     time::Duration,
 };
-
-use crate::{
-    attribute::VerifyAttribute,
-    judge::{JudgeResult, JudgeStatus, VerifyResult},
-};
+use tokio::{runtime, time};
 
 type SolveFunc = fn(&[u8], &mut Vec<u8>);
 
@@ -155,11 +155,6 @@ impl StaticAssertion {
 }
 impl AOJTestCaseHeader {
     fn verify(&self, attr: &VerifyAttribute, f: SolveFunc) -> JudgeResult {
-        let mut ret = JudgeResult {
-            name: self.name.clone(),
-            status: JudgeStatus::InternalError,
-            exec_time_ms: 0,
-        };
         let in_path = self.in_path(&attr.problem_id);
         let out_path = self.out_path(&attr.problem_id);
         if !in_path.exists() {
@@ -169,48 +164,75 @@ impl AOJTestCaseHeader {
             log::warn!("out file is not found {}:{}", attr.problem_id, self.name);
         }
         if in_path.exists() && out_path.exists() {
-            tokio::runtime::Builder::new_current_thread()
+            runtime::Builder::new_current_thread()
                 .enable_all()
                 .build()
                 .unwrap()
-                .block_on(async {
-                    let Ok(in_buf) = read_file(&in_path) else {
-                        return ret;
-                    };
-                    let Ok(expect) = read_file(&out_path) else {
-                        return ret;
-                    };
-                    let result = tokio::time::timeout(Duration::from_secs(11), async move {
-                        let mut actual = Vec::new();
-                        f(&in_buf, &mut actual);
-                        match StaticAssertion::assert(&expect[..], &actual[..]) {
-                            Ok(status) => {
-                                if status {
-                                    ret.status = JudgeStatus::Accepted
-                                } else {
-                                    ret.status = JudgeStatus::WrongAnswer
-                                }
-                            }
-                            Err(_) => ret.status = JudgeStatus::InternalError,
-                        }
-                        ret
-                    })
-                    .await;
-                    match result {
-                        Ok(ret) => ret,
-                        Err(e) => {
-                            log::error!("{:?}", e);
-                            JudgeResult {
-                                status: JudgeStatus::InternalError,
-                                name: self.name.clone(),
-                                exec_time_ms: 0,
-                            }
+                .block_on(self.verify_inner(in_path, out_path, attr, f))
+        } else {
+            JudgeResult {
+                name: self.name.clone(),
+                status: JudgeStatus::InternalError,
+                exec_time_ms: 0,
+            }
+        }
+    }
+
+    async fn verify_inner(
+        &self,
+        in_path: PathBuf,
+        out_path: PathBuf,
+        attr: &VerifyAttribute,
+        f: SolveFunc,
+    ) -> JudgeResult {
+        let mut ret = JudgeResult {
+            name: self.name.clone(),
+            status: JudgeStatus::InternalError,
+            exec_time_ms: 0,
+        };
+        let Ok(in_buf) = read_file(&in_path) else {
+            return ret;
+        };
+        let Ok(expect) = read_file(&out_path) else {
+            return ret;
+        };
+
+        let run = async {
+            let mut actual = Vec::new();
+            let now = time::Instant::now();
+            f(&in_buf, &mut actual);
+            (actual, now.elapsed())
+        };
+        let sleep = time::sleep(Duration::from_millis(attr.time_limit_ms as u64));
+
+        tokio::select! {
+            _ = sleep => {
+                dbg!("sleep");
+                ret.status = JudgeStatus::TimeLimitExceeded
+            },
+            (actual, elapsed) = run => {
+                dbg!("run");
+                ret.exec_time_ms = elapsed.as_millis() as u64;
+                dbg!(&ret);
+                match StaticAssertion::assert(&expect[..], &actual[..]) {
+                    Ok(status) => {
+                        if status && ret.exec_time_ms <= attr.time_limit_ms {
+                            ret.status = JudgeStatus::Accepted
+                        } else if !status {
+                            ret.status = JudgeStatus::WrongAnswer
+                        } else {
+                            ret.status = JudgeStatus::TimeLimitExceeded
                         }
                     }
-                })
-        } else {
-            ret
+                    Err(e) => {
+                        log::error!("{:?}", e);
+                        ret.status = JudgeStatus::InternalError
+                    }
+                }
+            },
+
         }
+        ret
     }
     fn in_path(&self, problem_id: &str) -> PathBuf {
         AizuOnlineJudge::problem_dir_path(problem_id)
@@ -225,6 +247,7 @@ impl AOJTestCaseHeader {
             .with_extension("out")
     }
 }
+
 fn read_file(path: &PathBuf) -> anyhow::Result<Vec<u8>> {
     let mut buf = Vec::new();
     File::open(&path)?.read_to_end(&mut buf)?;

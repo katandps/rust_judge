@@ -31,7 +31,26 @@ impl VerifyResult {
     }
 
     fn generate_md(&self) -> String {
-        format!("# Verify Result: {}", self.success)
+        let mut body = String::new();
+        for case in &self.cases {
+            body.push_str(&format!(
+                "| {} | {} | {}ms |\n",
+                case.name, case.status, case.exec_time_ms
+            ));
+        }
+        format!(
+            "# Verify Result {}\n\n| case name | judge | elapsed time |\n| --- | --- | --- |\n{}",
+            self.icon(),
+            body
+        )
+    }
+
+    fn icon(&self) -> &'static str {
+        if self.success {
+            "[x]"
+        } else {
+            "[ ]"
+        }
     }
 }
 
