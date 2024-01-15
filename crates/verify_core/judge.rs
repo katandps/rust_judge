@@ -5,13 +5,7 @@ pub enum VerifyStatus {
     InternalError,
     TimeLimitExceeded,
 }
-use std::{
-    fmt::{Display, Formatter, Result},
-    fs::File,
-    io::Write,
-    path::PathBuf,
-    str::FromStr,
-};
+use std::fmt::{Display, Formatter, Result};
 
 #[derive(Clone, Debug)]
 pub struct VerifyResult {
@@ -20,36 +14,11 @@ pub struct VerifyResult {
 }
 
 impl VerifyResult {
-    pub fn output(&self, path: &str, ident: &str) -> anyhow::Result<()> {
-        let mut md_path = PathBuf::from_str(&crate::workspace_root_directory()?)?;
-        md_path.push(path);
-        md_path.pop();
-        md_path.push(format!("result_{ident}.md"));
-        log::info!("{:?}", md_path);
-        File::create(md_path)?.write_all(self.generate_md().as_bytes())?;
-        Ok(())
-    }
-
-    fn generate_md(&self) -> String {
-        let mut body = String::new();
-        for case in &self.cases {
-            body.push_str(&format!(
-                "| {} | {} | {}ms |\n",
-                case.name, case.status, case.exec_time_ms
-            ));
-        }
-        format!(
-            "# Verify Result {}\n\n| case name | judge | elapsed time |\n| --- | --- | --- |\n{}",
-            self.icon(),
-            body
-        )
-    }
-
-    fn icon(&self) -> &'static str {
+    pub fn result_icon(&self) -> &'static str {
         if self.success {
-            "[x]"
+            "✅"
         } else {
-            "[ ]"
+            "❌"
         }
     }
 }

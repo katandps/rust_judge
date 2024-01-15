@@ -14,6 +14,7 @@ use std::{
     io::{Read, Write},
     path::PathBuf,
     process::Command,
+    str::FromStr,
 };
 
 const APP_NAME: &'static str = "rust_judge";
@@ -42,6 +43,32 @@ pub trait Verifiable: Solver {
                 time_limit_ms: Self::TIME_LIMIT_MILLIS,
             },
             Self::verify_inner,
+        )
+    }
+    fn output(res: &VerifyResult, path: &str, ident: &str) -> anyhow::Result<()> {
+        let mut md_path = PathBuf::from_str(&crate::workspace_root_directory()?)?;
+        md_path.push(path);
+        md_path.pop();
+        md_path.push(format!("result_{ident}.md"));
+        log::info!("{:?}", md_path);
+        File::create(md_path)?.write_all(Self::generate_md(res).as_bytes())?;
+        Ok(())
+    }
+
+    fn generate_md(res: &VerifyResult) -> String {
+        let mut body = String::new();
+        for case in &res.cases {
+            body.push_str(&format!(
+                "| {} | {} | {}ms |\n",
+                case.name, case.status, case.exec_time_ms
+            ));
+        }
+        format!(
+            "# Verify Result {}\n\n## [PROBLEM LINK]({})\n\n\nTL: {}ms\n\n| case name | judge | elapsed time |\n| --- | --- | --- |\n{}",
+            res.result_icon(),
+            Self::SERVICE::url(Self::PROBLEM_ID),
+            Self::TIME_LIMIT_MILLIS,
+            body
         )
     }
 }

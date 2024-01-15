@@ -16,6 +16,7 @@ type SolveFunc = fn(&[u8], &mut Vec<u8>);
 pub trait Service {
     fn fetch_testcases(problem_id: &str) -> anyhow::Result<()>;
     fn verify(attr: VerifyAttribute, f: SolveFunc) -> anyhow::Result<VerifyResult>;
+    fn url(problem_id: &str) -> String;
     const SERVICE_NAME: &'static str;
 }
 
@@ -37,6 +38,10 @@ struct AOJTestCaseHeader {
 pub struct AizuOnlineJudge;
 
 impl Service for AizuOnlineJudge {
+    fn url(problem_id: &str) -> String {
+        format!("https://onlinejudge.u-aizu.ac.jp/problems/{problem_id}")
+    }
+
     fn fetch_testcases(problem_id: &str) -> anyhow::Result<()> {
         let mut problem_dir = crate::app_cache_directory();
         problem_dir.push("aizu_online_judge");
