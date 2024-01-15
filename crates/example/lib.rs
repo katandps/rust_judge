@@ -15,7 +15,6 @@ pub struct Itp1_1A;
 
 impl Solver for Itp1_1A {
     const PROBLEM_ID: &'static str = "ITP1_1_A";
-    type SERVICE = AizuOnlineJudge;
     fn solve(_read: impl Read, mut write: impl Write) {
         writeln!(write, "Hello World").ok();
         write.flush().ok();

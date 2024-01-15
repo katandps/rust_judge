@@ -22,12 +22,15 @@ pub trait Solver {
     const PROBLEM_ID: &'static str;
     const EPSILON: f64 = 0f64;
     const TIME_LIMIT: f64 = 10.0f64;
+    fn solve(read: impl Read, write: impl Write);
+}
+
+pub trait Verifiable: Solver {
     type SERVICE: Service;
 
     fn fetch_testcases() {
         Self::SERVICE::fetch_testcases(Self::PROBLEM_ID).expect("failed to fetch testcases");
     }
-    fn solve(read: impl Read, write: impl Write);
     fn verify_inner(read: &[u8], write: &mut Vec<u8>) {
         Self::solve(read, write)
     }

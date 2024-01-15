@@ -13,5 +13,5 @@ path = "lib.rs"
 
 [features]
 verify = []
-verify_doc = []
+verify_result = []
 fetch_testcases = []

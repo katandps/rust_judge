@@ -1,21 +1,21 @@
 # Rust Judge Helper
 
-## includes
+## commands
 
-### verify
+### fetch testcases
 
-command for verify
-
-### verify_attr
-
-下記の Attribute を提供する
-
-```rust
-#[verify::library_checker(problem_id = "aplusb", eps = 1e6, tl = 2.0)]
-fn solve(read: impl Read, write: impl Write) {
-}
+```sh
+cargo test --features fetch_testcases -- --test-threads=1 --ignored
 ```
 
-### verify_core
+## verify
 
-上記ライブラリのコア実装
+```sh
+cargo test --features verify -- --ignored
+```
+
+## doc
+
+```sh
+cargo doc --workspace --no-deps --features verify
+```
