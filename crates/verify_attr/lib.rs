@@ -38,13 +38,14 @@ fn fetch_testcases(ident: &Ident) -> proc_macro2::TokenStream {
 }
 fn verify(ident: &Ident) -> proc_macro2::TokenStream {
     let fn_name = Ident::new(&format!("verify_{ident}"), Span::call_site());
+    let ident_str = ident.to_string();
     quote! {
         #[cfg_attr(feature = "verify", test)]
-        #[cfg_attr(feature = "fetch_testcases", ignore)]
+        #[cfg_attr(feature = "verify", ignore)]
         fn #fn_name() {
             let res = <#ident as ::verify::Verifiable>::verify();
             if let Ok(res) = res {
-                res.output().expect("Failed to write result.");
+                res.output(::std::file!(), &#ident_str).expect("Failed to write result.");
                 assert!(res.success);
             } else {
                 panic!("Internal error: {}", #ident::PROBLEM_ID);

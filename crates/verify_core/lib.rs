@@ -46,6 +46,22 @@ pub trait Verifiable: Solver {
     }
 }
 
+fn workspace_root_directory() -> anyhow::Result<String> {
+    #[derive(Debug, Clone, Deserialize)]
+    struct TargetDir {
+        workspace_root: String,
+    }
+    let output = Command::new(env!("CARGO"))
+        .args(["metadata", "--quiet", "--no-deps"])
+        .output()?;
+
+    if output.status.success() {
+        Ok(serde_json::from_slice::<TargetDir>(&output.stdout)?.workspace_root)
+    } else {
+        Err(Error::msg("Cargo command did not finish successful."))
+    }
+}
+
 fn target_directory() -> anyhow::Result<String> {
     #[derive(Debug, Clone, Deserialize)]
     struct TargetDir {

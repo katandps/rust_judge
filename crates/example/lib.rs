@@ -8,9 +8,9 @@ fn test() {
     assert_eq!("Hello World\n".as_bytes(), result);
 }
 
-#[derive(AizuOnlineJudge)]
 /// # Hello World
 /// <https://onlinejudge.u-aizu.ac.jp/problems/ITP1_1_A>
+#[derive(AizuOnlineJudge)]
 pub struct Itp1_1A;
 
 impl Solver for Itp1_1A {
