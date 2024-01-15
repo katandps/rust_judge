@@ -5,11 +5,43 @@ pub mod service;
 use anyhow::Error;
 use attribute::VerifyAttribute;
 use dirs::cache_dir;
+use judge::VerifyResult;
 use serde::Deserialize;
 use service::Service;
-use std::{env::temp_dir, fs::File, io::Read, path::PathBuf, process::Command};
+use std::{
+    env::temp_dir,
+    fs::File,
+    io::{Read, Write},
+    path::PathBuf,
+    process::Command,
+};
 
 const APP_NAME: &'static str = "rust_judge";
+
+pub trait Solver {
+    const PROBLEM_ID: &'static str;
+    const EPSILON: f64 = 0f64;
+    const TIME_LIMIT: f64 = 10.0f64;
+    type SERVICE: Service;
+
+    fn fetch_testcases() {
+        Self::SERVICE::fetch_testcases(Self::PROBLEM_ID).expect("failed to fetch testcases");
+    }
+    fn solve(read: impl Read, write: impl Write);
+    fn verify_inner(read: &[u8], write: &mut Vec<u8>) {
+        Self::solve(read, write)
+    }
+    fn verify() -> anyhow::Result<VerifyResult> {
+        Self::SERVICE::verify(
+            VerifyAttribute {
+                problem_id: Self::PROBLEM_ID.to_string(),
+                epsilon: Self::EPSILON,
+                time_limit: Self::TIME_LIMIT,
+            },
+            Self::verify_inner,
+        )
+    }
+}
 
 fn target_directory() -> anyhow::Result<String> {
     #[derive(Debug, Clone, Deserialize)]

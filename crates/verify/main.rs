@@ -61,6 +61,6 @@ fn list() {
 fn generate() {
     let list = verify_core::load_verify_info::<AizuOnlineJudge>().unwrap();
     for item in list {
-        AizuOnlineJudge::fetch_testcases(item.problem_id).unwrap();
+        AizuOnlineJudge::fetch_testcases(&item.problem_id).unwrap();
     }
 }

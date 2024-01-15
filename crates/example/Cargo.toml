@@ -10,4 +10,8 @@ verify = { path = "../verify" }
 
 [lib]
 path = "lib.rs"
-proc-macro = true
+
+[features]
+verify = []
+verify_doc = []
+fetch_testcases = []

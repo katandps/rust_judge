@@ -14,8 +14,7 @@ use crate::{
 type SolveFunc = fn(&[u8], &mut Vec<u8>);
 
 pub trait Service {
-    fn save_verify_info(attr: &VerifyAttribute) -> anyhow::Result<()>;
-    fn fetch_testcases(problem_id: String) -> anyhow::Result<()>;
+    fn fetch_testcases(problem_id: &str) -> anyhow::Result<()>;
     fn verify(attr: VerifyAttribute, f: SolveFunc) -> anyhow::Result<VerifyResult>;
     const SERVICE_NAME: &'static str;
 }
@@ -38,22 +37,10 @@ struct AOJTestCaseHeader {
 pub struct AizuOnlineJudge;
 
 impl Service for AizuOnlineJudge {
-    fn save_verify_info(attr: &VerifyAttribute) -> anyhow::Result<()> {
-        let mut target = PathBuf::from(crate::target_directory()?);
-        target.push(crate::APP_NAME);
-        target.push(Self::SERVICE_NAME);
-        create_dir_all(&target)?;
-        target.push(&attr.problem_id);
-        let mut file = File::create(&target)?;
-        file.flush()?;
-        file.write_all(serde_json::to_string(&attr)?.as_bytes())?;
-        Ok(())
-    }
-
-    fn fetch_testcases(problem_id: String) -> anyhow::Result<()> {
+    fn fetch_testcases(problem_id: &str) -> anyhow::Result<()> {
         let mut problem_dir = crate::app_cache_directory();
         problem_dir.push("aizu_online_judge");
-        problem_dir.push(&problem_id);
+        problem_dir.push(problem_id);
         if !problem_dir.exists() {
             create_dir_all(&problem_dir)?;
         }

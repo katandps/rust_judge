@@ -1,72 +1,42 @@
 use proc_macro::TokenStream;
 use proc_macro2::{Ident, Span};
 use quote::quote;
-use syn::{parse_macro_input, ItemFn};
-use verify_core::{
-    attribute::VerifyAttribute,
-    service::{AizuOnlineJudge, Service},
-};
+use syn::{parse_macro_input, DeriveInput, LitStr};
 
-#[proc_macro_attribute]
-pub fn aizu_online_judge(attr: TokenStream, item: TokenStream) -> TokenStream {
-    verify_attr::<AizuOnlineJudge>(attr, item)
+#[proc_macro_derive(AizuOnlineJudge)]
+pub fn derive(input: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(input as DeriveInput);
+    let fetch_testcases = fetch_testcases(&input.ident);
+    let verify = verify(&input.ident);
+    quote! {
+        #fetch_testcases
+        #verify
+    }
+    .into()
 }
-// #[proc_macro_attribute]
-// pub fn library_checker(attr: TokenStream, item: TokenStream) -> TokenStream {
-//     verify_attr("LibraryChecker", attr, item)
-// }
-// #[proc_macro_attribute]
-// pub fn atcoder(attr: TokenStream, item: TokenStream) -> TokenStream {
-//     verify_attr("AtCoder", attr, item)
-// }
-
-// #[proc_macro_attribute]
-// pub fn yuki_coder(attr: TokenStream, item: TokenStream) -> TokenStream {
-//     verify_attr("YukiCoder", attr, item)
-// }
-
-fn verify_attr<S: Service>(attr: TokenStream, item: TokenStream) -> TokenStream {
-    match parse_macro_input!(attr as VerifyAttribute) {
-        attr => {
-            // dbg!(std::module_path!());
-            let ast = parse_macro_input!(item as ItemFn);
-            S::save_verify_info(&attr)
-                .expect(format!("Failed to save verify info: {}", attr.problem_id).as_str());
-            let fn_name = ast.sig.ident.clone();
-            let verify_name: Ident = Ident::new(&format!("verify_{fn_name}"), Span::call_site());
-            let test_fn = quote! {
-                #[test]
-                #[ignore]
-                fn #verify_name() {
-                    fn verify_inner(read: &[u8], write: &mut Vec<u8>) {
-                        #fn_name(read, write)
-                    }
-                    let attr = #attr;
-                    use ::verify::Service;
-                    let res = ::verify::AizuOnlineJudge::verify(attr, verify_inner);
-                    assert!(res.is_ok());
-                    assert!(res.unwrap().success);
-                }
-            };
-            quote! {
-                #[allow(dead_code)]
-                #ast
-                #test_fn
-            }
-            .into()
+fn fetch_testcases(ident: &Ident) -> proc_macro2::TokenStream {
+    let fn_name = Ident::new(&format!("fetch_testcases_{ident}"), Span::call_site());
+    quote! {
+        #[test]
+        #[ignore]
+        #[cfg(feature = "fetch_testcases")]
+        fn #fn_name() {
+            #ident::fetch_testcases();
         }
     }
 }
-
-#[allow(unused)]
-fn get_out_dir() -> Option<String> {
-    let mut args = std::env::args();
-    // Then we loop through them all, and find the value of "out-dir"
-    let mut out_dir = None;
-    while let Some(arg) = args.next() {
-        if arg == "--out-dir" {
-            out_dir = args.next();
+fn verify(ident: &Ident) -> proc_macro2::TokenStream {
+    let fn_name = Ident::new(&format!("verify_{ident}"), Span::call_site());
+    let md = LitStr::new(&format!("{ident}.md"), Span::call_site());
+    quote! {
+        #[test]
+        #[ignore]
+        #[cfg_attr(feature = "verify_doc", doc = include_str!(#md))]
+        #[cfg(feature = "verify")]
+        pub fn #fn_name() {
+            let res = #ident::verify();
+            assert!(res.is_ok());
+            assert!(res.unwrap().success);
         }
     }
-    out_dir
 }
