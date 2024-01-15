@@ -13,6 +13,12 @@ pub struct VerifyResult {
     pub cases: Vec<JudgeResult>,
 }
 
+impl VerifyResult {
+    pub fn output(&self) -> anyhow::Result<()> {
+        Ok(())
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum JudgeResult {
     Accepted,

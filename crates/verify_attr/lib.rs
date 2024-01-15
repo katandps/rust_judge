@@ -35,8 +35,12 @@ fn verify(ident: &Ident) -> proc_macro2::TokenStream {
         #[cfg(feature = "verify")]
         pub fn #fn_name() {
             let res = #ident::verify();
-            assert!(res.is_ok());
-            assert!(res.unwrap().success);
+            if let Ok(res) = res {
+                res.output().expect("Failed to write result.");
+                assert!(res.success);
+            } else {
+                panic!("Internal error: {}", #ident::PROBLEM_ID);
+            }
         }
     }
 }
