@@ -58,7 +58,6 @@ pub trait Verifiable: Solver {
         md_path.push(path);
         md_path.pop();
         md_path.push(format!("result_{ident}.md"));
-        println!("{:?}", md_path);
         File::create(md_path)?.write_all(Self::generate_md(res).as_bytes())?;
         Ok(())
     }
@@ -72,7 +71,7 @@ pub trait Verifiable: Solver {
             ));
         }
         format!(
-            "# Verify Result {}\n\n## [PROBLEM LINK]({})\n\n\nTL: {}ms\n\n| case name | judge | elapsed time |\n| --- | --- | --- |\n{}",
+            "# Verify Result {}\n\n## [PROBLEM LINK]({})\n\nTL: {}ms\n\n| case name | judge | elapsed time |\n| --- | --- | --- |\n{}",
             res.result_icon(),
             Self::SERVICE::url(Self::PROBLEM_ID),
             Self::TIME_LIMIT_MILLIS,
@@ -105,4 +104,10 @@ fn app_cache_directory() -> PathBuf {
 
 fn blocking_client() -> reqwest::Result<reqwest::blocking::Client> {
     reqwest::blocking::Client::builder().build()
+}
+
+fn read_file(path: &PathBuf) -> anyhow::Result<Vec<u8>> {
+    let mut buf = Vec::new();
+    File::open(&path)?.read_to_end(&mut buf)?;
+    Ok(buf)
 }
