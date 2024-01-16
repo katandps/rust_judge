@@ -25,7 +25,6 @@ enum Commands {
 
 fn main() {
     let cli = Cli::parse();
-    env_logger::init();
 
     // You can check the value provided by positional arguments, or option arguments
     if let Some(name) = cli.name.as_deref() {
@@ -55,7 +54,7 @@ fn main() {
 }
 
 fn list() {
-    log::info!("list");
+    println!("list");
 }
 
 fn generate() {

@@ -153,7 +153,7 @@ impl StaticAssertion {
         if expect_values == actual_values {
             Ok(true)
         } else {
-            log::error!("expect: {:?}\nactual: {:?}", expect_values, actual_values);
+            println!("expect: {:?}\nactual: {:?}", expect_values, actual_values);
             Ok(false)
         }
     }
@@ -163,10 +163,10 @@ impl AOJTestCaseHeader {
         let in_path = self.in_path(&attr.problem_id);
         let out_path = self.out_path(&attr.problem_id);
         if !in_path.exists() {
-            log::warn!("in file is not found {}:{}", attr.problem_id, self.name);
+            println!("in file is not found {}:{}", attr.problem_id, self.name);
         }
         if !out_path.exists() {
-            log::warn!("out file is not found {}:{}", attr.problem_id, self.name);
+            println!("out file is not found {}:{}", attr.problem_id, self.name);
         }
         if in_path.exists() && out_path.exists() {
             runtime::Builder::new_current_thread()
@@ -228,7 +228,7 @@ impl AOJTestCaseHeader {
                         }
                     }
                     Err(e) => {
-                        log::error!("{:?}", e);
+                        println!("{:?}", e);
                         ret.status = JudgeStatus::InternalError
                     }
                 }

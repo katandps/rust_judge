@@ -50,7 +50,7 @@ pub trait Verifiable: Solver {
         md_path.push(path);
         md_path.pop();
         md_path.push(format!("result_{ident}.md"));
-        log::info!("{:?}", md_path);
+        println!("{:?}", md_path);
         File::create(md_path)?.write_all(Self::generate_md(res).as_bytes())?;
         Ok(())
     }
@@ -108,7 +108,6 @@ pub fn load_verify_info<S: Service>() -> anyhow::Result<Vec<VerifyAttribute>> {
     let mut target = PathBuf::from(target_directory()?);
     target.push(APP_NAME);
     target.push(S::SERVICE_NAME);
-    log::info!("start loading {}", target.to_string_lossy());
     if target.exists() && target.is_dir() {
         let mut result = Vec::new();
         for entry in target.read_dir()? {
