@@ -8,7 +8,7 @@ impl Service for LibraryChecker {
         todo!()
     }
     fn url(problem_id: &str) -> String {
-        todo!()
+        format!("https://judge.yosupo.jp/problem/{problem_id}")
     }
     fn verify(attr: VerifyAttribute, f: crate::SolveFunc) -> anyhow::Result<VerifyResult> {
         todo!()
