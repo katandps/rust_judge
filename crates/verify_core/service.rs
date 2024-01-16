@@ -1,6 +1,7 @@
 use crate::{
     attribute::VerifyAttribute,
-    judge::{JudgeResult, JudgeStatus, VerifyResult},
+    judge::{JudgeResult, JudgeStatus, StaticAssertion, VerifyResult},
+    Service, SolveFunc,
 };
 use serde::{Deserialize, Serialize};
 use std::{
@@ -10,15 +11,6 @@ use std::{
     time::Duration,
 };
 use tokio::{runtime, time};
-
-type SolveFunc = fn(&[u8], &mut Vec<u8>);
-
-pub trait Service {
-    fn fetch_testcases(problem_id: &str) -> anyhow::Result<()>;
-    fn verify(attr: VerifyAttribute, f: SolveFunc) -> anyhow::Result<VerifyResult>;
-    fn url(problem_id: &str) -> String;
-    const SERVICE_NAME: &'static str;
-}
 
 #[derive(Deserialize, Serialize, Debug)]
 struct AOJTestCaseHeaders {
@@ -129,35 +121,6 @@ impl AOJTestCaseHeaders {
     }
 }
 
-pub struct StaticAssertion;
-impl StaticAssertion {
-    pub fn assert(
-        mut expect: impl std::io::Read,
-        mut actual: impl std::io::Read,
-    ) -> anyhow::Result<bool> {
-        let (mut actual_values, mut expect_values) = (Vec::new(), Vec::new());
-        {
-            let mut buf = String::new();
-            expect.read_to_string(&mut buf)?;
-            for v in buf.split_ascii_whitespace() {
-                expect_values.push(v.to_string());
-            }
-        }
-        {
-            let mut buf = String::new();
-            actual.read_to_string(&mut buf)?;
-            for v in buf.split_ascii_whitespace() {
-                actual_values.push(v.to_string());
-            }
-        }
-        if expect_values == actual_values {
-            Ok(true)
-        } else {
-            println!("expect: {:?}\nactual: {:?}", expect_values, actual_values);
-            Ok(false)
-        }
-    }
-}
 impl AOJTestCaseHeader {
     fn verify(&self, attr: &VerifyAttribute, f: SolveFunc) -> JudgeResult {
         let in_path = self.in_path(&attr.problem_id);
@@ -217,7 +180,7 @@ impl AOJTestCaseHeader {
             },
             (actual, elapsed) = run => {
                 ret.exec_time_ms = elapsed.as_millis() as u64;
-                match StaticAssertion::assert(&expect[..], &actual[..]) {
+                match StaticAssertion::assert(&expect[..], &actual[..], attr.epsilon) {
                     Ok(status) => {
                         if status && ret.exec_time_ms <= attr.time_limit_ms {
                             ret.status = JudgeStatus::Accepted

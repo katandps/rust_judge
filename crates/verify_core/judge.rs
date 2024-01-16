@@ -49,3 +49,33 @@ impl Display for JudgeStatus {
         }
     }
 }
+
+pub struct StaticAssertion;
+impl StaticAssertion {
+    pub fn assert(
+        mut expect: impl std::io::Read,
+        mut actual: impl std::io::Read,
+        _eps: f64,
+    ) -> anyhow::Result<bool> {
+        let (mut actual_values, mut expect_values) = (Vec::new(), Vec::new());
+        {
+            let mut buf = String::new();
+            expect.read_to_string(&mut buf)?;
+            for v in buf.split_ascii_whitespace() {
+                expect_values.push(v.to_string());
+            }
+        }
+        {
+            let mut buf = String::new();
+            actual.read_to_string(&mut buf)?;
+            for v in buf.split_ascii_whitespace() {
+                actual_values.push(v.to_string());
+            }
+        }
+        if expect_values == actual_values {
+            Ok(true)
+        } else {
+            Ok(false)
+        }
+    }
+}
