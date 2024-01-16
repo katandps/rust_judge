@@ -55,7 +55,7 @@ impl StaticAssertion {
     pub fn assert(
         mut expect: impl std::io::Read,
         mut actual: impl std::io::Read,
-        _eps: f64,
+        _eps: Option<f64>,
     ) -> anyhow::Result<bool> {
         let (mut actual_values, mut expect_values) = (Vec::new(), Vec::new());
         {

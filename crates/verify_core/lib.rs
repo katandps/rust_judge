@@ -29,7 +29,7 @@ pub trait Service {
 
 pub trait Solver {
     const PROBLEM_ID: &'static str;
-    const EPSILON: f64 = 0f64;
+    const EPSILON: Option<f64> = None;
     const TIME_LIMIT_MILLIS: u64 = 10000;
     fn solve(read: impl Read, write: impl Write);
 }

@@ -10,7 +10,7 @@ use syn::{
 #[derive(Debug, Serialize, Deserialize)]
 pub struct VerifyAttribute {
     pub problem_id: String,
-    pub epsilon: f64,
+    pub epsilon: Option<f64>,
     pub time_limit_ms: u64,
 }
 
@@ -18,7 +18,7 @@ impl Parse for VerifyAttribute {
     fn parse(input: ParseStream) -> syn::Result<Self> {
         let punc = Punctuated::<Meta, Token![,]>::parse_terminated(input)?;
         let mut problem_id = None;
-        let mut epsilon = 0.0;
+        let mut epsilon = None;
         let mut time_limit_ms = 10000;
         for meta in punc.iter() {
             match meta {
@@ -28,7 +28,7 @@ impl Parse for VerifyAttribute {
                         Some(ident) if ident == "problem_id" => {
                             problem_id = Some(parse_problem_id(nv)?)
                         }
-                        Some(ident) if ident == "eps" => epsilon = parse_eps(nv)?,
+                        Some(ident) if ident == "eps" => epsilon = Some(parse_eps(nv)?),
                         Some(ident) if ident == "tl" => time_limit_ms = parse_tl(nv)?,
                         _ => {
                             return Err(Error::new(
