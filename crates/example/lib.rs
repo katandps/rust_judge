@@ -1,5 +1,5 @@
-use std::io::{Read, Write};
-use verify::{AizuOnlineJudge, Solver};
+use std::io::{BufRead, BufReader, Read, Write};
+use verify::{AizuOnlineJudge, LibraryChecker, Solver};
 
 #[test]
 fn test() {
@@ -29,6 +29,24 @@ impl Solver for Itp1_1aTLE {
     fn solve(_read: impl Read, mut write: impl Write) {
         std::thread::sleep(std::time::Duration::from_secs(1));
         writeln!(write, "Hello World").ok();
+        write.flush().ok();
+    }
+}
+
+#[derive(LibraryChecker)]
+pub struct APlusB;
+impl Solver for APlusB {
+    const PROBLEM_ID: &'static str = "aplusb";
+    const TIME_LIMIT_MILLIS: u64 = 2000;
+    fn solve(read: impl Read, mut write: impl Write) {
+        let mut input = String::new();
+        let mut bufread = BufReader::new(read);
+        bufread.read_line(&mut input).expect("failed read");
+        let v = input
+            .split_ascii_whitespace()
+            .map(|s| s.parse::<i64>().unwrap())
+            .collect::<Vec<_>>();
+        writeln!(write, "{}", v[0] + v[1]).ok();
         write.flush().ok();
     }
 }
