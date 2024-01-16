@@ -212,13 +212,11 @@ impl AOJTestCaseHeader {
 
         tokio::select! {
             _ = sleep => {
-                dbg!("sleep");
+                // うまく動作していない 度を越えたTLEはこちらで打ち切りたい
                 ret.status = JudgeStatus::TimeLimitExceeded
             },
             (actual, elapsed) = run => {
-                dbg!("run");
                 ret.exec_time_ms = elapsed.as_millis() as u64;
-                dbg!(&ret);
                 match StaticAssertion::assert(&expect[..], &actual[..]) {
                     Ok(status) => {
                         if status && ret.exec_time_ms <= attr.time_limit_ms {
