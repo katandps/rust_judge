@@ -55,7 +55,7 @@ impl StaticAssertion {
     pub fn assert(
         mut expect: impl std::io::Read,
         mut actual: impl std::io::Read,
-        _eps: Option<f64>,
+        eps: Option<f64>,
     ) -> anyhow::Result<bool> {
         let (mut actual_values, mut expect_values) = (Vec::new(), Vec::new());
         {
@@ -72,10 +72,54 @@ impl StaticAssertion {
                 actual_values.push(v.to_string());
             }
         }
-        if expect_values == actual_values {
-            Ok(true)
-        } else {
+        if expect_values.len() != actual_values.len() {
+            println!("expect: {:?}\nactual: {:?}", expect_values, actual_values);
             Ok(false)
+        } else {
+            for (expect, actual) in expect_values.iter().zip(&actual_values) {
+                if let Some(eps) = eps {
+                    match (expect.parse::<f64>(), actual.parse::<f64>()) {
+                        (Ok(ex), Ok(ac)) => {
+                            if !((ex - ac).abs() <= eps || ((ex - ac) / ex).abs() <= eps) {
+                                println!(
+                                    "expect: {:?}\nactual: {:?}",
+                                    expect_values, actual_values
+                                );
+                                return Ok(false);
+                            }
+                        }
+                        _ => {
+                            if expect != actual {
+                                println!(
+                                    "expect: {:?}\nactual: {:?}",
+                                    expect_values, actual_values
+                                );
+                                return Ok(false);
+                            }
+                        }
+                    }
+                } else {
+                    if expect != actual {
+                        println!("expect: {:?}\nactual: {:?}", expect_values, actual_values);
+                        return Ok(false);
+                    }
+                }
+            }
+            Ok(true)
         }
     }
+}
+
+#[test]
+fn assert_test() {
+    let res = StaticAssertion::assert("123".as_bytes(), "123".as_bytes(), None);
+    assert!(res.unwrap());
+    let res = StaticAssertion::assert("123".as_bytes(), "124".as_bytes(), None);
+    assert!(!res.unwrap());
+    let res = StaticAssertion::assert("10000".as_bytes(), "10001".as_bytes(), Some(1e-4));
+    assert!(res.unwrap());
+    let res = StaticAssertion::assert("10000".as_bytes(), "-10000".as_bytes(), Some(1e-4));
+    assert!(!res.unwrap());
+    let res = StaticAssertion::assert("10000".as_bytes(), "10001".as_bytes(), Some(1e-5));
+    assert!(!res.unwrap());
 }
