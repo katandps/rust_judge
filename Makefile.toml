@@ -1,0 +1,71 @@
+[config]
+skip_core_tasks = true
+default_to_workspace = false
+
+[env]
+RUST_MIN_STACK = 104857600
+
+[tasks.format]
+description = "Reformat files"
+install_crate = "rustfmt"
+category = "Development"
+command = "cargo"
+args = ["fmt"]
+
+[tasks.lint]
+description = "Lint project files"
+install_crate = "clippy"
+category = "Development"
+command = "cargo"
+args = ["clippy", "--", "-D", "warnings"]
+
+[tasks.check]
+description = "Check compile for Rust 1.70.0"
+toolchain = "1.70.0"
+category = "Development"
+command = "cargo"
+args = ["check"]
+
+[tasks.test]
+description = "Run unit tests"
+category = "Development"
+command = "cargo"
+args = ["test"]
+
+[tasks.rustdoc]
+description = "Generate rustdoc"
+command = "cargo"
+category = "Documentation"
+args = ["doc", "--no-deps", "--features", "verify_result"]
+
+[tasks.refresh-dropbox-token]
+description = "Refresh local dropbox token"
+category = "Verification"
+script = '''
+	curl https://api.dropbox.com/oauth2/token \
+		-d grant_type=refresh_token \
+		-d refresh_token=${DROPBOX_REFRESH_TOKEN} \
+		-u ${DROPBOX_APP_KEY}:${DROPBOX_APP_SECRET} | \
+		python3 -c "import sys, json; data=json.load(sys.stdin); print(data['access_token'], end='')" > dropbox_token
+'''
+
+[tasks.verify-download]
+description = "download verification problems"
+dependencies = ["refresh-dropbox-token"]
+command = "cargo"
+category = "Verification"
+args = [
+	"test",
+	"--features",
+	"fetch_testcases",
+	"--",
+	"--test-threads=1",
+	"--ignored",
+]
+
+[tasks.verify]
+description = "verify problems"
+dependencies = ["refresh-dropbox-token"]
+command = "cargo"
+category = "Verification"
+args = ["test", "--features", "verify", "--", "--ignored"]
