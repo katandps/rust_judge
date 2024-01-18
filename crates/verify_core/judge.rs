@@ -5,7 +5,10 @@ pub enum VerifyStatus {
     InternalError,
     TimeLimitExceeded,
 }
-use std::fmt::{Display, Formatter, Result};
+use std::{
+    fmt::{Display, Formatter, Result},
+    io::Read,
+};
 
 #[derive(Clone, Debug)]
 pub struct VerifyResult {
@@ -50,13 +53,15 @@ impl Display for JudgeStatus {
     }
 }
 
-pub struct StaticAssertion;
-impl StaticAssertion {
-    pub fn assert(
-        mut expect: impl std::io::Read,
-        mut actual: impl std::io::Read,
-        eps: Option<f64>,
-    ) -> anyhow::Result<bool> {
+pub trait Assertion {
+    fn assert(&self, expect: impl Read, actual: impl Read) -> anyhow::Result<bool>;
+}
+
+pub struct StaticAssertion {
+    pub eps: Option<f64>,
+}
+impl Assertion for StaticAssertion {
+    fn assert(&self, mut expect: impl Read, mut actual: impl Read) -> anyhow::Result<bool> {
         let (mut actual_values, mut expect_values) = (Vec::new(), Vec::new());
         {
             let mut buf = String::new();
@@ -77,7 +82,7 @@ impl StaticAssertion {
             Ok(false)
         } else {
             for (expect, actual) in expect_values.iter().zip(&actual_values) {
-                if let Some(eps) = eps {
+                if let Some(eps) = self.eps {
                     match (expect.parse::<f64>(), actual.parse::<f64>()) {
                         (Ok(ex), Ok(ac)) => {
                             if !((ex - ac).abs() <= eps || ((ex - ac) / ex).abs() <= eps) {
@@ -112,14 +117,14 @@ impl StaticAssertion {
 
 #[test]
 fn assert_test() {
-    let res = StaticAssertion::assert("123".as_bytes(), "123".as_bytes(), None);
+    let res = StaticAssertion { eps: None }.assert("123".as_bytes(), "123".as_bytes());
     assert!(res.unwrap());
-    let res = StaticAssertion::assert("123".as_bytes(), "124".as_bytes(), None);
+    let res = StaticAssertion { eps: None }.assert("123".as_bytes(), "124".as_bytes());
     assert!(!res.unwrap());
-    let res = StaticAssertion::assert("10000".as_bytes(), "10001".as_bytes(), Some(1e-4));
+    let res = StaticAssertion { eps: Some(1e-4) }.assert("10000".as_bytes(), "10001".as_bytes());
     assert!(res.unwrap());
-    let res = StaticAssertion::assert("10000".as_bytes(), "-10000".as_bytes(), Some(1e-4));
+    let res = StaticAssertion { eps: Some(1e-4) }.assert("10000".as_bytes(), "-10000".as_bytes());
     assert!(!res.unwrap());
-    let res = StaticAssertion::assert("10000".as_bytes(), "10001".as_bytes(), Some(1e-5));
+    let res = StaticAssertion { eps: Some(1e-5) }.assert("10000".as_bytes(), "10001".as_bytes());
     assert!(!res.unwrap());
 }

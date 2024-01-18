@@ -1,6 +1,6 @@
 use crate::{
     attribute::VerifyAttribute,
-    judge::{JudgeResult, JudgeStatus, StaticAssertion, VerifyResult},
+    judge::{Assertion, JudgeResult, JudgeStatus, StaticAssertion, VerifyResult},
     Service, SolveFunc,
 };
 use serde::{Deserialize, Serialize};
@@ -131,12 +131,13 @@ impl AOJTestCaseHeader {
         if !out_path.exists() {
             println!("out file is not found {}:{}", attr.problem_id, self.name);
         }
+        let assertion = StaticAssertion { eps: attr.epsilon };
         if in_path.exists() && out_path.exists() {
             runtime::Builder::new_current_thread()
                 .enable_all()
                 .build()
                 .unwrap()
-                .block_on(self.verify_inner(in_path, out_path, attr, f))
+                .block_on(self.verify_inner(in_path, out_path, assertion, attr, f))
         } else {
             JudgeResult {
                 name: self.name.clone(),
@@ -150,6 +151,7 @@ impl AOJTestCaseHeader {
         &self,
         in_path: PathBuf,
         out_path: PathBuf,
+        assertion: impl Assertion,
         attr: &VerifyAttribute,
         f: SolveFunc,
     ) -> JudgeResult {
@@ -175,7 +177,6 @@ impl AOJTestCaseHeader {
             (actual, now.elapsed())
         };
         let sleep = time::sleep(Duration::from_millis(attr.time_limit_ms as u64));
-
         tokio::select! {
             _ = sleep => {
                 // うまく動作していない 度を越えたTLEはこちらで打ち切りたい
@@ -184,7 +185,7 @@ impl AOJTestCaseHeader {
             (actual, elapsed) = run => {
                 ret.exec_time_ms = elapsed.as_millis() as u64;
                 if let Ok(actual) = actual {
-                    match StaticAssertion::assert(&expect[..], &actual[..], attr.epsilon) {
+                    match assertion.assert(&expect[..], &actual[..]) {
                         Ok(status) => {
                             if status && ret.exec_time_ms <= attr.time_limit_ms {
                                 ret.status = JudgeStatus::Accepted
