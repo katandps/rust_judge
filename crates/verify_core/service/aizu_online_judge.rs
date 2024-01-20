@@ -114,10 +114,7 @@ impl AOJTestCaseHeaders {
             .iter()
             .map(|header| header.verify(attr, f))
             .collect();
-        let success = cases
-            .iter()
-            .all(|result| result.status == JudgeStatus::Accepted);
-        VerifyResult { success, cases }
+        VerifyResult { cases }
     }
 }
 
@@ -125,19 +122,27 @@ impl AOJTestCaseHeader {
     fn verify(&self, attr: &VerifyAttribute, f: SolveFunc) -> JudgeResult {
         let in_path = self.in_path(&attr.problem_id);
         let out_path = self.out_path(&attr.problem_id);
-        if !in_path.exists() {
+        let input_buf = crate::read_file(&in_path).unwrap_or_else(|_e| {
             println!("in file is not found {}:{}", attr.problem_id, self.name);
-        }
-        if !out_path.exists() {
+            Vec::new()
+        });
+        let expect_buf = crate::read_file(&out_path).unwrap_or_else(|_e| {
             println!("out file is not found {}:{}", attr.problem_id, self.name);
-        }
-        let assertion = StaticAssertion { eps: attr.epsilon };
+            Vec::new()
+        });
+        let input = String::from_utf8_lossy(&input_buf);
+        let expect = String::from_utf8_lossy(&expect_buf);
+        let assertion = StaticAssertion {
+            input,
+            expect,
+            eps: attr.epsilon,
+        };
         if in_path.exists() && out_path.exists() {
             runtime::Builder::new_current_thread()
                 .enable_all()
                 .build()
                 .unwrap()
-                .block_on(self.verify_inner(in_path, out_path, assertion, attr, f))
+                .block_on(self.verify_inner(&assertion, attr, f))
         } else {
             JudgeResult {
                 name: self.name.clone(),
@@ -149,9 +154,7 @@ impl AOJTestCaseHeader {
 
     async fn verify_inner(
         &self,
-        in_path: PathBuf,
-        out_path: PathBuf,
-        assertion: impl Assertion,
+        assertion: &StaticAssertion<'_>,
         attr: &VerifyAttribute,
         f: SolveFunc,
     ) -> JudgeResult {
@@ -160,18 +163,11 @@ impl AOJTestCaseHeader {
             status: JudgeStatus::InternalError,
             exec_time_ms: 0,
         };
-        let Ok(in_buf) = crate::read_file(&in_path) else {
-            return ret;
-        };
-        let Ok(expect) = crate::read_file(&out_path) else {
-            return ret;
-        };
-
         let run = async {
             let now = time::Instant::now();
             let actual = ::std::panic::catch_unwind(|| {
                 let mut actual = Vec::new();
-                f(&in_buf, &mut actual);
+                f(&assertion.input.as_bytes(), &mut actual);
                 actual
             });
             (actual, now.elapsed())
@@ -185,7 +181,7 @@ impl AOJTestCaseHeader {
             (actual, elapsed) = run => {
                 ret.exec_time_ms = elapsed.as_millis() as u64;
                 if let Ok(actual) = actual {
-                    match assertion.assert(&expect[..], &actual[..]) {
+                    match assertion.assert(&String::from_utf8_lossy(&actual)) {
                         Ok(status) => {
                             if status && ret.exec_time_ms <= attr.time_limit_ms {
                                 ret.status = JudgeStatus::Accepted

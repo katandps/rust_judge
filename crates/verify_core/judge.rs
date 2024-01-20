@@ -6,19 +6,24 @@ pub enum VerifyStatus {
     TimeLimitExceeded,
 }
 use std::{
+    borrow::Cow,
     fmt::{Display, Formatter, Result},
-    io::Read,
+    path::PathBuf,
+    process::Command,
 };
 
 #[derive(Clone, Debug)]
 pub struct VerifyResult {
-    pub success: bool,
     pub cases: Vec<JudgeResult>,
 }
 
 impl VerifyResult {
+    pub fn success(&self) -> bool {
+        self.cases.iter().all(|c| c.status == JudgeStatus::Accepted)
+    }
+
     pub fn result_icon(&self) -> &'static str {
-        if self.success {
+        if self.success() {
             "✅"
         } else {
             "❌"
@@ -54,29 +59,26 @@ impl Display for JudgeStatus {
 }
 
 pub trait Assertion {
-    fn assert(&self, expect: impl Read, actual: impl Read) -> anyhow::Result<bool>;
+    fn assert(&self, actual: &str) -> anyhow::Result<bool>;
 }
 
-pub struct StaticAssertion {
+pub struct StaticAssertion<'a> {
+    pub input: Cow<'a, str>,
+    pub expect: Cow<'a, str>,
     pub eps: Option<f64>,
 }
-impl Assertion for StaticAssertion {
-    fn assert(&self, mut expect: impl Read, mut actual: impl Read) -> anyhow::Result<bool> {
-        let (mut actual_values, mut expect_values) = (Vec::new(), Vec::new());
-        {
-            let mut buf = String::new();
-            expect.read_to_string(&mut buf)?;
-            for v in buf.split_ascii_whitespace() {
-                expect_values.push(v.to_string());
-            }
-        }
-        {
-            let mut buf = String::new();
-            actual.read_to_string(&mut buf)?;
-            for v in buf.split_ascii_whitespace() {
-                actual_values.push(v.to_string());
-            }
-        }
+impl Assertion for StaticAssertion<'_> {
+    fn assert(&self, actual: &str) -> anyhow::Result<bool> {
+        let expect_values = self
+            .expect
+            .split_ascii_whitespace()
+            .map(|v| v.to_string())
+            .collect::<Vec<_>>();
+        let actual_values = actual
+            .split_ascii_whitespace()
+            .map(|v| v.to_string())
+            .collect::<Vec<_>>();
+
         if expect_values.len() != actual_values.len() {
             println!("expect: {:?}\nactual: {:?}", expect_values, actual_values);
             Ok(false)
@@ -115,16 +117,71 @@ impl Assertion for StaticAssertion {
     }
 }
 
+pub struct CheckBinaryAssertion {
+    pub input_path: PathBuf,
+    pub expect_path: PathBuf,
+    pub checker_path: PathBuf,
+}
+
+impl Assertion for CheckBinaryAssertion {
+    fn assert(&self, actual: &str) -> anyhow::Result<bool> {
+        if !self.checker_path.exists() {
+            println!(
+                "checker file is not found {}",
+                self.checker_path.to_string_lossy()
+            );
+        }
+        let resfile = crate::save_temp_file(actual.as_bytes())?;
+
+        let output = Command::new(self.checker_path.as_os_str())
+            .args([
+                self.input_path.as_os_str(),
+                self.expect_path.as_os_str(),
+                resfile.path().as_os_str(),
+            ])
+            .output()?;
+        match output.status.code() {
+            Some(0) => Ok(true),
+            _ => Ok(false),
+        }
+    }
+}
+
 #[test]
 fn assert_test() {
-    let res = StaticAssertion { eps: None }.assert("123".as_bytes(), "123".as_bytes());
+    let res = StaticAssertion {
+        input: Cow::Owned("".into()),
+        expect: Cow::Owned("123".into()),
+        eps: None,
+    }
+    .assert("123");
     assert!(res.unwrap());
-    let res = StaticAssertion { eps: None }.assert("123".as_bytes(), "124".as_bytes());
+    let res = StaticAssertion {
+        input: Cow::Owned("".into()),
+        expect: Cow::Owned("123".into()),
+        eps: None,
+    }
+    .assert("124");
     assert!(!res.unwrap());
-    let res = StaticAssertion { eps: Some(1e-4) }.assert("10000".as_bytes(), "10001".as_bytes());
+    let res = StaticAssertion {
+        input: Cow::Owned("".into()),
+        expect: Cow::Owned("10000".into()),
+        eps: Some(1e-4),
+    }
+    .assert("10001");
     assert!(res.unwrap());
-    let res = StaticAssertion { eps: Some(1e-4) }.assert("10000".as_bytes(), "-10000".as_bytes());
+    let res = StaticAssertion {
+        input: Cow::Owned("".into()),
+        expect: Cow::Owned("10000".into()),
+        eps: Some(1e-4),
+    }
+    .assert("-10000");
     assert!(!res.unwrap());
-    let res = StaticAssertion { eps: Some(1e-5) }.assert("10000".as_bytes(), "10001".as_bytes());
+    let res = StaticAssertion {
+        input: Cow::Owned("".into()),
+        expect: Cow::Owned("10000".into()),
+        eps: Some(1e-5),
+    }
+    .assert("10001");
     assert!(!res.unwrap());
 }

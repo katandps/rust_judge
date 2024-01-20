@@ -15,6 +15,7 @@ use std::{
     process::Command,
     str::FromStr,
 };
+use tempfile::NamedTempFile;
 
 const APP_NAME: &'static str = "rust_judge";
 
@@ -110,4 +111,10 @@ fn read_file(path: &PathBuf) -> anyhow::Result<Vec<u8>> {
     let mut buf = Vec::new();
     File::open(&path)?.read_to_end(&mut buf)?;
     Ok(buf)
+}
+
+fn save_temp_file(buf: &[u8]) -> anyhow::Result<NamedTempFile> {
+    let mut file = NamedTempFile::new()?;
+    file.write_all(buf)?;
+    Ok(file)
 }

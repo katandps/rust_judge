@@ -63,7 +63,7 @@ fn verify(ident: &Ident) -> proc_macro2::TokenStream {
             let res = <#ident as ::verify::Verifiable>::verify();
             if let Ok(res) = res {
                 <#ident as ::verify::Verifiable>::output(&res, ::std::file!(), &#ident_str).expect("Failed to write result.");
-                assert!(res.success);
+                assert!(res.success());
             } else {
                 panic!("Internal error: {}", #ident::PROBLEM_ID);
             }
