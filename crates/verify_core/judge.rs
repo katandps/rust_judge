@@ -12,6 +12,8 @@ use std::{
     process::Command,
 };
 
+use crate::Solver;
+
 #[derive(Clone, Debug)]
 pub struct VerifyResult {
     pub cases: Vec<JudgeResult>,
@@ -114,6 +116,19 @@ impl Assertion for StaticAssertion<'_> {
             }
             Ok(true)
         }
+    }
+}
+
+impl<'a> StaticAssertion<'a> {
+    pub fn equals<S: Solver>(input: &'a str, expect: &'a str) {
+        let mut buf = Vec::new();
+        S::solve(input.as_bytes(), &mut buf);
+        let assert = Self {
+            input: Cow::Borrowed(input),
+            expect: Cow::Borrowed(expect),
+            eps: S::EPSILON,
+        };
+        assert!(assert.assert(&String::from_utf8_lossy(&buf)).expect(""))
     }
 }
 

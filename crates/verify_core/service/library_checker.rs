@@ -127,11 +127,11 @@ impl TestCase {
                         .enable_all()
                         .build()
                         .unwrap()
-                        .block_on(self.verify_inner(&assertion, attr, f)),
+                        .block_on(self.verify_inner(name, &assertion, attr, f)),
                 )
             } else {
                 ret.push(JudgeResult {
-                    name: attr.problem_id.clone(),
+                    name,
                     status: JudgeStatus::InternalError,
                     exec_time_ms: 0,
                 });
@@ -142,12 +142,13 @@ impl TestCase {
 
     async fn verify_inner(
         &self,
+        name: String,
         assertion: &CheckBinaryAssertion,
         attr: &VerifyAttribute,
         f: SolveFunc,
     ) -> JudgeResult {
         let mut ret = JudgeResult {
-            name: self.name.clone(),
+            name,
             status: JudgeStatus::InternalError,
             exec_time_ms: 0,
         };
