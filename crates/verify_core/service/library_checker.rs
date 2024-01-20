@@ -23,7 +23,10 @@ impl Service for LibraryChecker {
         let out_dir = problem.dir.join("out");
         create_dir_all(&in_dir)?;
         create_dir_all(&out_dir)?;
-
+        let info_path = problem.dir.join("info.toml");
+        if !info_path.exists() {
+            println!("info path is not found: {}", info_path.to_string_lossy());
+        }
         Command::new(option_env!("PYTHON").unwrap_or("python"))
             .arg(root_dir().join("generate.py"))
             .arg(problem.dir.join("info.toml"))
@@ -200,8 +203,7 @@ impl TestCase {
 }
 
 fn find_problem(problem_id: &str) -> anyhow::Result<Problem> {
-    let root_dir = crate::app_cache_directory().join("library_checker");
-    for entry in read_dir(root_dir)?.flatten() {
+    for entry in read_dir(root_dir())?.flatten() {
         let mut path = entry.path().join(problem_id).join("info.toml");
         if path.is_file() {
             let data = read_to_string(&path)?;

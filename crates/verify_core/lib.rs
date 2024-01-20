@@ -8,6 +8,7 @@ use dirs::cache_dir;
 use judge::VerifyResult;
 use serde::Deserialize;
 use std::{
+    borrow::Cow,
     env::temp_dir,
     fs::File,
     io::{Read, Write},
@@ -16,6 +17,8 @@ use std::{
     str::FromStr,
 };
 use tempfile::NamedTempFile;
+
+use crate::judge::{Assertion, StaticAssertion};
 
 const APP_NAME: &'static str = "rust_judge";
 
@@ -33,6 +36,16 @@ pub trait Solver {
     const EPSILON: Option<f64> = None;
     const TIME_LIMIT_MILLIS: u64 = 10000;
     fn solve(read: impl Read, write: impl Write);
+    fn assert(input: &str, expect: &str) {
+        let mut buf = Vec::new();
+        Self::solve(input.as_bytes(), &mut buf);
+        let assert = StaticAssertion {
+            input: Cow::Borrowed(input),
+            expect: Cow::Borrowed(expect),
+            eps: Self::EPSILON,
+        };
+        assert!(assert.assert(&String::from_utf8_lossy(&buf)).expect(""))
+    }
 }
 
 pub trait Verifiable: Solver {
