@@ -96,7 +96,7 @@ impl Service for AizuOnlineJudge {
 impl AizuOnlineJudge {
     fn problem_dir_path(problem_id: &str) -> PathBuf {
         let mut problem_dir = crate::app_cache_directory();
-        problem_dir.push("aizu_online_judge");
+        problem_dir.push(Self::SERVICE_NAME);
         problem_dir.push(problem_id);
         problem_dir
     }

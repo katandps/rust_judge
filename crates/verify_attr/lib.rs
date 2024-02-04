@@ -5,22 +5,18 @@ use syn::{parse_macro_input, DeriveInput, LitStr};
 
 #[proc_macro_derive(AizuOnlineJudge)]
 pub fn derive_aizu_online_judge(input: TokenStream) -> TokenStream {
-    let input = parse_macro_input!(input as DeriveInput);
-    let service = Ident::new("AizuOnlineJudge", Span::call_site());
-    let implement = implement(&input.ident, &service);
-    let fetch_testcases = fetch_testcases(&input.ident);
-    let verify = verify(&input.ident);
-    quote! {
-        #implement
-        #fetch_testcases
-        #verify
-    }
-    .into()
+    derive(input, Ident::new("AizuOnlineJudge", Span::call_site()))
 }
 #[proc_macro_derive(LibraryChecker)]
 pub fn derive_library_checker(input: TokenStream) -> TokenStream {
+    derive(input, Ident::new("LibraryChecker", Span::call_site()))
+}
+#[proc_macro_derive(Yukicoder)]
+pub fn derive_yukicoder(input: TokenStream) -> TokenStream {
+    derive(input, Ident::new("Yukicoder", Span::call_site()))
+}
+fn derive(input: TokenStream, service: Ident) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
-    let service = Ident::new("LibraryChecker", Span::call_site());
     let implement = implement(&input.ident, &service);
     let fetch_testcases = fetch_testcases(&input.ident);
     let verify = verify(&input.ident);

@@ -1,5 +1,5 @@
 use std::io::{BufRead, BufReader, Read, Write};
-use verify::{AizuOnlineJudge, LibraryChecker, Solver};
+use verify::{AizuOnlineJudge, LibraryChecker, Solver, Yukicoder};
 
 #[test]
 fn test() {
@@ -38,6 +38,24 @@ pub struct APlusB;
 impl Solver for APlusB {
     const PROBLEM_ID: &'static str = "aplusb";
     const TIME_LIMIT_MILLIS: u64 = 2000;
+    fn solve(read: impl Read, mut write: impl Write) {
+        let mut input = String::new();
+        let mut bufread = BufReader::new(read);
+        bufread.read_line(&mut input).expect("failed read");
+        let v = input
+            .split_ascii_whitespace()
+            .map(|s| s.parse::<i64>().unwrap())
+            .collect::<Vec<_>>();
+        writeln!(write, "{}", v[0] + v[1]).ok();
+        write.flush().ok();
+    }
+}
+
+#[derive(Yukicoder)]
+pub struct YukicoderSample;
+impl Solver for YukicoderSample {
+    const PROBLEM_ID: &'static str = "9001";
+    const TIME_LIMIT_MILLIS: u64 = 5000;
     fn solve(read: impl Read, mut write: impl Write) {
         let mut input = String::new();
         let mut bufread = BufReader::new(read);
