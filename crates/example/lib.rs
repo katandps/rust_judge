@@ -62,9 +62,11 @@ impl Solver for YukicoderSample {
         bufread.read_line(&mut input).expect("failed read");
         let v = input
             .split_ascii_whitespace()
-            .map(|s| s.parse::<i64>().unwrap())
-            .collect::<Vec<_>>();
-        writeln!(write, "{}", v[0] + v[1]).ok();
-        write.flush().ok();
+            .map(|s| s.to_string())
+            .collect::<Vec<String>>();
+        let ans = v[0].parse::<i64>().unwrap() + v[1].parse::<i64>().unwrap();
+        let mut v2 = String::new();
+        bufread.read_line(&mut v2).expect("failed read");
+        writeln!(write, "{ans} {v2}").ok();
     }
 }

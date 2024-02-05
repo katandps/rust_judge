@@ -5,9 +5,15 @@ use std::{
     fs::{create_dir_all, File},
     io::{Read, Write},
     path::PathBuf,
+    time::Duration,
 };
+use tokio::{runtime, time};
 
-use crate::{attribute::VerifyAttribute, judge::VerifyResult, Service, SolveFunc};
+use crate::{
+    attribute::VerifyAttribute,
+    judge::{Assertion, JudgeResult, JudgeStatus, StaticAssertion, VerifyResult},
+    Service, SolveFunc,
+};
 
 pub struct Yukicoder;
 const BASE_URL: &str = "https://yukicoder.me/api/v1/problems/no";
@@ -29,7 +35,7 @@ impl Service for Yukicoder {
             create_problem_directory(&attr.problem_id, &crate::app_cache_directory())?;
         let path = header_path(&problem_dir);
         let cases = YukicoderHeader::from_file(&path);
-        Ok(cases.verify(&attr, f))
+        Ok(cases.verify(&attr, &problem_dir, f))
     }
 }
 
@@ -76,9 +82,104 @@ impl YukicoderHeader {
         Ok(())
     }
 
-    fn verify(&self, attr: &VerifyAttribute, f: SolveFunc) -> VerifyResult {
-        todo!()
+    fn verify(&self, attr: &VerifyAttribute, problem_dir: &PathBuf, f: SolveFunc) -> VerifyResult {
+        let cases: Vec<_> = self
+            .list
+            .iter()
+            .map(|case_name| verify(&attr, problem_dir, &case_name, f))
+            .collect();
+        VerifyResult { cases }
     }
+}
+
+fn verify(
+    attr: &VerifyAttribute,
+    problem_dir: &PathBuf,
+    case_name: &str,
+    f: SolveFunc,
+) -> JudgeResult {
+    let in_path = problem_dir.join("in").join(case_name);
+    let out_path = problem_dir.join("out").join(case_name);
+    let input_buf = crate::read_file(&in_path).unwrap_or_else(|_e| {
+        println!("in file is not found {}:{case_name}", attr.problem_id);
+        Vec::new()
+    });
+    let expect_buf = crate::read_file(&out_path).unwrap_or_else(|_e| {
+        println!("out file is not found {}:{case_name}", attr.problem_id);
+        Vec::new()
+    });
+    let input = String::from_utf8_lossy(&input_buf);
+    let expect = String::from_utf8_lossy(&expect_buf);
+    let assertion = StaticAssertion {
+        input,
+        expect,
+        eps: attr.epsilon,
+    };
+    if in_path.exists() && out_path.exists() {
+        runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .unwrap()
+            .block_on(verify_inner(case_name.to_string(), &assertion, attr, f))
+    } else {
+        JudgeResult {
+            name: case_name.to_string(),
+            status: JudgeStatus::InternalError,
+            exec_time_ms: 0,
+        }
+    }
+}
+
+async fn verify_inner(
+    name: String,
+    assertion: &StaticAssertion<'_>,
+    attr: &VerifyAttribute,
+    f: SolveFunc,
+) -> JudgeResult {
+    let mut ret = JudgeResult {
+        name: name.clone(),
+        status: JudgeStatus::InternalError,
+        exec_time_ms: 0,
+    };
+    let run = async {
+        let now = time::Instant::now();
+        let actual = ::std::panic::catch_unwind(|| {
+            let mut actual = Vec::new();
+            f(&assertion.input.as_bytes(), &mut actual);
+            actual
+        });
+        (actual, now.elapsed())
+    };
+    let sleep = time::sleep(Duration::from_millis(attr.time_limit_ms as u64));
+    tokio::select! {
+        _ = sleep => {
+            // うまく動作していない 度を越えたTLEはこちらで打ち切りたい
+            ret.status = JudgeStatus::TimeLimitExceeded
+        },
+        (actual, elapsed) = run => {
+            ret.exec_time_ms = elapsed.as_millis() as u64;
+            if let Ok(actual) = actual {
+                match assertion.assert(&String::from_utf8_lossy(&actual)) {
+                    Ok(status) => {
+                        if status && ret.exec_time_ms <= attr.time_limit_ms {
+                            ret.status = JudgeStatus::Accepted
+                        } else if !status {
+                            ret.status = JudgeStatus::WrongAnswer
+                        } else {
+                            ret.status = JudgeStatus::TimeLimitExceeded
+                        }
+                    }
+                    Err(e) => {
+                        println!("{:?}", e);
+                        ret.status = JudgeStatus::InternalError
+                    }
+                }
+            } else {
+                ret.status = JudgeStatus::RuntimeError
+            }
+        },
+    }
+    ret
 }
 
 #[derive(Clone, Debug, PartialEq)]
