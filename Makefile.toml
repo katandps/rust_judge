@@ -4,6 +4,7 @@ default_to_workspace = false
 
 [env]
 RUST_MIN_STACK = 104857600
+RUST_BACKTRACE = 1
 
 [tasks.format]
 description = "Reformat files"

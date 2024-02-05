@@ -6,12 +6,12 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+anyhow = { version = "1.0.79", features = ["backtrace"] }
 syn = { version = "2.0.41", features = ["full", "extra-traits"] }
 quote = "1.0.33"
 proc-macro2 = "1.0.70"
 dirs = "5.0.1"
 reqwest = { version = "0.11.23", features = ["blocking", "json"] }
-anyhow = "1.0.79"
 tokio = { version = "1.35.1", features = ["macros"] }
 serde = { version = "1.0.195", features = ["derive"] }
 serde_json = "1.0.111"

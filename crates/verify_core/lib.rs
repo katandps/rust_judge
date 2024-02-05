@@ -52,7 +52,10 @@ pub trait Verifiable: Solver {
     type SERVICE: Service;
 
     fn fetch_testcases() {
-        Self::SERVICE::fetch_testcases(Self::PROBLEM_ID).expect("failed to fetch testcases");
+        match Self::SERVICE::fetch_testcases(Self::PROBLEM_ID) {
+            Err(e) => panic!("{:?}", e),
+            _ => (),
+        }
     }
     fn verify_inner(read: &[u8], write: &mut Vec<u8>) {
         Self::solve(read, write)

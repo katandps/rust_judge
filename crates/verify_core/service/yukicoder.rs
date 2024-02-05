@@ -1,11 +1,11 @@
+use anyhow::{Context, Error};
+use reqwest::blocking;
+use serde::{Deserialize, Serialize};
 use std::{
     fs::{create_dir_all, File},
     io::{Read, Write},
     path::PathBuf,
 };
-
-use anyhow::Error;
-use reqwest::blocking;
 
 use crate::{attribute::VerifyAttribute, judge::VerifyResult, Service, SolveFunc};
 
@@ -24,7 +24,59 @@ impl Service for Yukicoder {
         }
         Ok(())
     }
-    fn verify(_attr: VerifyAttribute, _f: SolveFunc) -> anyhow::Result<VerifyResult> {
+    fn verify(attr: VerifyAttribute, f: SolveFunc) -> anyhow::Result<VerifyResult> {
+        let problem_dir =
+            create_problem_directory(&attr.problem_id, &crate::app_cache_directory())?;
+        let path = header_path(&problem_dir);
+        let cases = YukicoderHeader::from_file(&path);
+        Ok(cases.verify(&attr, f))
+    }
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+struct YukicoderHeader {
+    problem_id: String,
+    list: Vec<String>,
+}
+impl YukicoderHeader {
+    fn from_file(path: &PathBuf) -> Self {
+        let mut buf = Vec::new();
+        File::open(path)
+            .expect("header file is not found")
+            .read_to_end(&mut buf)
+            .expect("could not load file");
+        serde_json::from_slice(&buf).expect("saved header file is invalid")
+    }
+
+    fn download(
+        &self,
+        problem_id: &str,
+        client: blocking::Client,
+        problem_dir: &PathBuf,
+    ) -> anyhow::Result<()> {
+        for target in &self.list {
+            let in_url = format!("{BASE_URL}/{problem_id}/file/in/{target}");
+            let response = client
+                .get(in_url)
+                .header("Authorization", get_session()?)
+                .send()?;
+            let text = response.text()?;
+            let in_path = problem_dir.join("in").join(&target);
+            File::create(&in_path)?.write_all(&text.as_bytes())?;
+
+            let out_url = format!("{BASE_URL}/{problem_id}/file/out/{target}");
+            let response = client
+                .get(out_url)
+                .header("Authorization", get_session()?)
+                .send()?;
+            let text = response.text()?;
+            let out_path = problem_dir.join("out").join(&target);
+            File::create(&out_path)?.write_all(&text.as_bytes())?;
+        }
+        Ok(())
+    }
+
+    fn verify(&self, attr: &VerifyAttribute, f: SolveFunc) -> VerifyResult {
         todo!()
     }
 }
@@ -42,7 +94,6 @@ enum YukicoderTask {
     DownloadTestCases {
         problem_id: String,
         problem_dir: PathBuf,
-        header_path: PathBuf,
     },
     Done,
 }
@@ -70,20 +121,20 @@ impl YukicoderTask {
                 problem_dir,
             } => {
                 let client = crate::blocking_client()?;
-                let header_path = download_testcase_info(client, &problem_id, &problem_dir)?;
+                download_testcase_info(client, &problem_id, &problem_dir)?;
                 Ok(Self::DownloadTestCases {
                     problem_id,
                     problem_dir,
-                    header_path,
                 })
             }
             Self::DownloadTestCases {
                 problem_id,
                 problem_dir,
-                header_path,
             } => {
                 let client = crate::blocking_client()?;
-                download_testcases(client, &problem_id, &problem_dir, &header_path)?;
+                let path = header_path(&problem_dir);
+                let testcases = YukicoderHeader::from_file(&path);
+                testcases.download(&problem_id, client, &problem_dir)?;
                 Ok(Self::Done)
             }
             Self::Done => Err(Error::msg("Task is completed.")),
@@ -96,8 +147,8 @@ fn create_problem_directory(problem_id: &str, base_dir: &PathBuf) -> anyhow::Res
     problem_dir.push(&problem_id);
     let in_dir = problem_dir.join("in");
     let out_dir = problem_dir.join("out");
-    create_dir_all(&in_dir)?;
-    create_dir_all(&out_dir)?;
+    create_dir_all(&in_dir).with_context(|| "could not create in directory")?;
+    create_dir_all(&out_dir).with_context(|| "could not create out directory")?;
 
     Ok(problem_dir)
 }
@@ -106,49 +157,31 @@ fn download_testcase_info(
     client: blocking::Client,
     problem_id: &str,
     problem_dir: &PathBuf,
-) -> anyhow::Result<PathBuf> {
+) -> anyhow::Result<()> {
     let in_url = format!("{BASE_URL}/{problem_id}/file/in");
     let response = client
         .get(in_url)
-        .header("Authorization", get_session()?)
+        .header(
+            "Authorization",
+            get_session().with_context(|| "could not get session key")?,
+        )
         .send()?;
     let text = &response.text()?;
-    dbg!(&text);
     let list: Vec<String> = serde_json::from_str(&text)?;
-    let header_path = problem_dir.join("header.json");
-    File::create(&header_path)?.write_all(serde_json::to_string(&list)?.as_bytes())?;
-    Ok(header_path)
+    let header = YukicoderHeader {
+        problem_id: problem_id.to_string(),
+        list,
+    };
+
+    let header_path = header_path(&problem_dir);
+    File::create(&header_path)
+        .expect("could not create header file")
+        .write_all(serde_json::to_string(&header)?.as_bytes())?;
+    Ok(())
 }
 
-fn download_testcases(
-    client: blocking::Client,
-    problem_id: &str,
-    problem_dir: &PathBuf,
-    header_path: &PathBuf,
-) -> anyhow::Result<()> {
-    let mut buf = Vec::new();
-    File::open(header_path)?.read_to_end(&mut buf)?;
-    let list: Vec<String> = serde_json::from_slice(&buf)?;
-    for target in list {
-        let in_url = format!("{BASE_URL}/{problem_id}/file/in/{target}");
-        let response = client
-            .get(in_url)
-            .header("Authorization", get_session()?)
-            .send()?;
-        let text = response.text()?;
-        let in_path = problem_dir.join("in").join(&target);
-        File::create(&in_path)?.write_all(&text.as_bytes())?;
-
-        let out_url = format!("{BASE_URL}/{problem_id}/file/out/{target}");
-        let response = client
-            .get(out_url)
-            .header("Authorization", get_session()?)
-            .send()?;
-        let text = response.text()?;
-        let out_path = problem_dir.join("out").join(&target);
-        File::create(&out_path)?.write_all(&text.as_bytes())?;
-    }
-    Ok(())
+fn header_path(problem_dir: &PathBuf) -> PathBuf {
+    problem_dir.join("header").with_extension("json")
 }
 
 fn get_session() -> anyhow::Result<String> {
