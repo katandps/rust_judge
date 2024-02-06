@@ -10,9 +10,12 @@ use std::{
     fmt::{Display, Formatter, Result},
     path::PathBuf,
     process::Command,
+    time::Duration,
 };
 
-use crate::Solver;
+use tokio::time;
+
+use crate::{attribute::VerifyAttribute, SolveFunc, Solver};
 
 #[derive(Clone, Debug)]
 pub struct VerifyResult {
@@ -58,6 +61,58 @@ impl Display for JudgeStatus {
             Self::TimeLimitExceeded => write!(f, "TLE"),
         }
     }
+}
+
+pub async fn verify_inner(
+    name: String,
+    assertion: &StaticAssertion<'_>,
+    attr: &VerifyAttribute,
+    f: SolveFunc,
+) -> JudgeResult {
+    let mut ret = JudgeResult {
+        name: name.clone(),
+        status: JudgeStatus::InternalError,
+        exec_time_ms: 0,
+    };
+    let run = async {
+        let now = time::Instant::now();
+        let actual = ::std::panic::catch_unwind(|| {
+            let mut actual = Vec::new();
+            f(&assertion.input.as_bytes(), &mut actual);
+            actual
+        });
+        (actual, now.elapsed())
+    };
+    let sleep = time::sleep(Duration::from_millis(attr.time_limit_ms as u64));
+    tokio::select! {
+        _ = sleep => {
+            // うまく動作していない 度を越えたTLEはこちらで打ち切りたい
+            ret.status = JudgeStatus::TimeLimitExceeded
+        },
+        (actual, elapsed) = run => {
+            ret.exec_time_ms = elapsed.as_millis() as u64;
+            if let Ok(actual) = actual {
+                match assertion.assert(&String::from_utf8_lossy(&actual)) {
+                    Ok(status) => {
+                        if status && ret.exec_time_ms <= attr.time_limit_ms {
+                            ret.status = JudgeStatus::Accepted
+                        } else if !status {
+                            ret.status = JudgeStatus::WrongAnswer
+                        } else {
+                            ret.status = JudgeStatus::TimeLimitExceeded
+                        }
+                    }
+                    Err(e) => {
+                        println!("{:?}", e);
+                        ret.status = JudgeStatus::InternalError
+                    }
+                }
+            } else {
+                ret.status = JudgeStatus::RuntimeError
+            }
+        },
+    }
+    ret
 }
 
 pub trait Assertion {

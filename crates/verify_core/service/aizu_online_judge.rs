@@ -1,6 +1,6 @@
 use crate::{
     attribute::VerifyAttribute,
-    judge::{Assertion, JudgeResult, JudgeStatus, StaticAssertion, VerifyResult},
+    judge::{self, JudgeResult, JudgeStatus, StaticAssertion, VerifyResult},
     Service, SolveFunc,
 };
 use serde::{Deserialize, Serialize};
@@ -10,7 +10,7 @@ use std::{
     path::PathBuf,
     time::Duration,
 };
-use tokio::{runtime, time};
+use tokio::runtime;
 
 #[derive(Deserialize, Serialize, Debug)]
 struct AOJTestCaseHeaders {
@@ -142,7 +142,7 @@ impl AOJTestCaseHeader {
                 .enable_all()
                 .build()
                 .unwrap()
-                .block_on(self.verify_inner(&assertion, attr, f))
+                .block_on(judge::verify_inner(self.name.clone(), &assertion, attr, f))
         } else {
             JudgeResult {
                 name: self.name.clone(),
@@ -152,64 +152,13 @@ impl AOJTestCaseHeader {
         }
     }
 
-    async fn verify_inner(
-        &self,
-        assertion: &StaticAssertion<'_>,
-        attr: &VerifyAttribute,
-        f: SolveFunc,
-    ) -> JudgeResult {
-        let mut ret = JudgeResult {
-            name: self.name.clone(),
-            status: JudgeStatus::InternalError,
-            exec_time_ms: 0,
-        };
-        let run = async {
-            let now = time::Instant::now();
-            let actual = ::std::panic::catch_unwind(|| {
-                let mut actual = Vec::new();
-                f(&assertion.input.as_bytes(), &mut actual);
-                actual
-            });
-            (actual, now.elapsed())
-        };
-        let sleep = time::sleep(Duration::from_millis(attr.time_limit_ms as u64));
-        tokio::select! {
-            _ = sleep => {
-                // うまく動作していない 度を越えたTLEはこちらで打ち切りたい
-                ret.status = JudgeStatus::TimeLimitExceeded
-            },
-            (actual, elapsed) = run => {
-                ret.exec_time_ms = elapsed.as_millis() as u64;
-                if let Ok(actual) = actual {
-                    match assertion.assert(&String::from_utf8_lossy(&actual)) {
-                        Ok(status) => {
-                            if status && ret.exec_time_ms <= attr.time_limit_ms {
-                                ret.status = JudgeStatus::Accepted
-                            } else if !status {
-                                ret.status = JudgeStatus::WrongAnswer
-                            } else {
-                                ret.status = JudgeStatus::TimeLimitExceeded
-                            }
-                        }
-                        Err(e) => {
-                            println!("{:?}", e);
-                            ret.status = JudgeStatus::InternalError
-                        }
-                    }
-                } else {
-                    ret.status = JudgeStatus::RuntimeError
-                }
-            },
-
-        }
-        ret
-    }
     fn in_path(&self, problem_id: &str) -> PathBuf {
         AizuOnlineJudge::problem_dir_path(problem_id)
             .join("in")
             .join(&self.name)
             .with_extension("in")
     }
+
     fn out_path(&self, problem_id: &str) -> PathBuf {
         AizuOnlineJudge::problem_dir_path(problem_id)
             .join("out")
