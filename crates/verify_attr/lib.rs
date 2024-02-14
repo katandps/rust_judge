@@ -15,6 +15,10 @@ pub fn derive_library_checker(input: TokenStream) -> TokenStream {
 pub fn derive_yukicoder(input: TokenStream) -> TokenStream {
     derive(input, Ident::new("Yukicoder", Span::call_site()))
 }
+#[proc_macro_derive(AtCoder)]
+pub fn derive_atcoder(input: TokenStream) -> TokenStream {
+    derive(input, Ident::new("AtCoder", Span::call_site()))
+}
 fn derive(input: TokenStream, service: Ident) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
     let implement = implement(&input.ident, &service);
@@ -42,7 +46,6 @@ fn fetch_testcases(ident: &Ident) -> proc_macro2::TokenStream {
     quote! {
         #[cfg_attr(feature = "fetch_testcases", test)]
         #[cfg_attr(feature = "fetch_testcases", ignore)]
-        #[cfg_attr(coverage_nightly, coverage(off))]
         fn #fn_name() {
             <#ident as ::verify::Verifiable>::fetch_testcases();
         }
@@ -54,7 +57,6 @@ fn verify(ident: &Ident) -> proc_macro2::TokenStream {
     quote! {
         #[cfg_attr(feature = "verify", test)]
         #[cfg_attr(feature = "verify", ignore)]
-        #[cfg_attr(coverage_nightly, coverage(off))]
         fn #fn_name() {
             let res = <#ident as ::verify::Verifiable>::verify();
             if let Ok(res) = res {
