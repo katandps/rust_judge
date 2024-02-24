@@ -36,6 +36,7 @@ fn implement(ident: &Ident, service: &Ident) -> proc_macro2::TokenStream {
     let md_name = LitStr::new(&format!("result_{ident}.md"), Span::call_site());
     quote! {
         #[cfg_attr(feature = "verify_result", doc = include_str!(#md_name))]
+        #[cfg_attr(coverage_nightly, coverage(off))]
         impl ::verify::Verifiable for #ident {
             type SERVICE = ::verify::#service;
         }
@@ -46,6 +47,7 @@ fn fetch_testcases(ident: &Ident) -> proc_macro2::TokenStream {
     quote! {
         #[cfg_attr(feature = "fetch_testcases", test)]
         #[cfg_attr(feature = "fetch_testcases", ignore)]
+        #[cfg_attr(coverage_nightly, coverage(off))]
         fn #fn_name() {
             <#ident as ::verify::Verifiable>::fetch_testcases();
         }
@@ -57,6 +59,7 @@ fn verify(ident: &Ident) -> proc_macro2::TokenStream {
     quote! {
         #[cfg_attr(feature = "verify", test)]
         #[cfg_attr(feature = "verify", ignore)]
+        #[cfg_attr(coverage_nightly, coverage(off))]
         fn #fn_name() {
             let res = <#ident as ::verify::Verifiable>::verify();
             if let Ok(res) = res {

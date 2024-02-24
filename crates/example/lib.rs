@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, feature(coverage_attribute))]
 use std::io::{BufRead, BufReader, Read, Write};
 use verify::{AizuOnlineJudge, LibraryChecker, Solver, Yukicoder};
 
