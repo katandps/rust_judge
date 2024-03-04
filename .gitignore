@@ -1,3 +1,4 @@
 /target
 crates/example/**.md
 dropbox_token
+.idea
