@@ -18,7 +18,6 @@ impl Solver for Itp1_1A {
     const PROBLEM_ID: &'static str = "ITP1_1_A";
     fn solve(_read: impl Read, mut write: impl Write) {
         writeln!(write, "Hello World").ok();
-        write.flush().ok();
     }
 }
 
@@ -30,7 +29,6 @@ impl Solver for Itp1_1aTLE {
     fn solve(_read: impl Read, mut write: impl Write) {
         std::thread::sleep(std::time::Duration::from_secs(1));
         writeln!(write, "Hello World").ok();
-        write.flush().ok();
     }
 }
 
@@ -48,7 +46,6 @@ impl Solver for APlusB {
             .map(|s| s.parse::<i64>().unwrap())
             .collect::<Vec<_>>();
         writeln!(write, "{}", v[0] + v[1]).ok();
-        write.flush().ok();
     }
 }
 

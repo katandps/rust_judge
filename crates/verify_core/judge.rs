@@ -1,10 +1,3 @@
-pub enum VerifyStatus {
-    Accepted,
-    WrongAnswer,
-    RuntimeError,
-    InternalError,
-    TimeLimitExceeded,
-}
 use std::{
     borrow::Cow,
     fmt::{Display, Formatter, Result},
@@ -12,10 +5,16 @@ use std::{
     process::Command,
     time::Duration,
 };
-
 use tokio::time;
-
 use crate::{attribute::VerifyAttribute, SolveFunc, Solver};
+
+pub enum VerifyStatus {
+    Accepted,
+    WrongAnswer,
+    RuntimeError,
+    InternalError,
+    TimeLimitExceeded,
+}
 
 #[derive(Clone, Debug)]
 pub struct VerifyResult {

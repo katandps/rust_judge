@@ -50,23 +50,25 @@ script = '''
 		python3 -c "import sys, json; data=json.load(sys.stdin); print(data['access_token'], end='')" > dropbox_token
 '''
 
-[tasks.verify-download]
-description = "download verification problems"
-dependencies = ["refresh-dropbox-token"]
-command = "cargo"
-category = "Verification"
-args = [
-	"test",
-	"--features",
-	"fetch_testcases",
-	"--",
-	"--test-threads=1",
-	"--ignored",
-]
-
 [tasks.verify]
+dependencies = ["verify-download", "verify-run"]
+
+[tasks.verify-download]
+env = { PYTHON = "python3" }
+description = "download verification problems"
+category = "Verification"
+script = '''
+cargo test --release --features fetch_testcases -- --ignored --test-threads=1
+'''
+
+[tasks.verify-run]
 description = "verify problems"
-dependencies = ["refresh-dropbox-token"]
 command = "cargo"
 category = "Verification"
-args = ["test", "--features", "verify", "--", "--ignored"]
+args = ["test", "--release", "--lib", "--features", "verify", "--", "--ignored"]
+
+[tasks.verify-list]
+category = "Verification"
+script = '''
+cargo test --release --lib --features verify --quiet -- --list --ignored
+'''

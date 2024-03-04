@@ -4,6 +4,7 @@ pub mod service;
 
 use anyhow::Error;
 use attribute::VerifyAttribute;
+use chrono::SecondsFormat;
 use dirs::cache_dir;
 use judge::VerifyResult;
 use serde::Deserialize;
@@ -80,6 +81,11 @@ pub trait Verifiable: Solver {
     }
 
     fn generate_md(res: &VerifyResult) -> String {
+        let (icon, url, tl) = (
+            res.result_icon(),
+            Self::SERVICE::url(Self::PROBLEM_ID),
+            Self::TIME_LIMIT_MILLIS,
+        );
         let mut body = String::new();
         for case in &res.cases {
             body.push_str(&format!(
@@ -87,12 +93,18 @@ pub trait Verifiable: Solver {
                 case.name, case.status, case.exec_time_ms
             ));
         }
+        let footer = format!(
+            "this document generated in {}",
+            chrono::Utc::now().to_rfc3339_opts(SecondsFormat::Millis, true)
+        );
         format!(
-            "# Verify Result {}\n\n## [PROBLEM LINK]({})\n\nTL: {}ms\n\n| case name | judge | elapsed time |\n| --- | --- | --- |\n{}",
-            res.result_icon(),
-            Self::SERVICE::url(Self::PROBLEM_ID),
-            Self::TIME_LIMIT_MILLIS,
-            body
+            "# Verify Result {icon}\n
+## [PROBLEM LINK]({url})\n
+TL: {tl}ms\n
+| case name | judge | elapsed time |
+| :--- | :---: | ---: |
+{body}\n
+{footer}",
         )
     }
 }
