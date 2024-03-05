@@ -104,7 +104,7 @@ TL: {tl}ms\n
 | case name | judge | elapsed time |
 | :--- | :---: | ---: |
 {body}\n
-{footer}",
+{footer}\n",
         )
     }
 }
