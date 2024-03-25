@@ -22,6 +22,15 @@ impl Solver for Itp1_1A {
 }
 
 #[derive(AizuOnlineJudge)]
+pub struct Itp1_1APanic;
+impl Solver for Itp1_1APanic {
+    const PROBLEM_ID: &'static str = "ITP1_1_A";
+    fn solve(_read: impl Read, mut _write: impl Write) {
+        panic!("explicit panic!")
+    }
+}
+
+#[derive(AizuOnlineJudge)]
 pub struct Itp1_1aTLE;
 impl Solver for Itp1_1aTLE {
     const PROBLEM_ID: &'static str = "ITP1_1_A";
