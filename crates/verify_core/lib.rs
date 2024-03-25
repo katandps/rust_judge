@@ -103,8 +103,7 @@ pub trait Verifiable: Solver {
 TL: {tl}ms\n
 | case name | judge | elapsed time |
 | :--- | :---: | ---: |
-{body}\n
-{footer}\n",
+{body}\n{footer}\n",
         )
     }
 }
