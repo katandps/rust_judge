@@ -1,3 +1,4 @@
+use crate::{attribute::VerifyAttribute, SolveFunc, Solver};
 use std::{
     borrow::Cow,
     fmt::{Display, Formatter, Result},
@@ -6,7 +7,6 @@ use std::{
     time::Duration,
 };
 use tokio::time;
-use crate::{attribute::VerifyAttribute, SolveFunc, Solver};
 
 pub enum VerifyStatus {
     Accepted,
