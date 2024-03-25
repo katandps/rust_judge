@@ -63,9 +63,10 @@ cargo test --release --features fetch_testcases -- --ignored --test-threads=1
 
 [tasks.verify-run]
 description = "verify problems"
-command = "cargo"
 category = "Verification"
-args = ["test", "--release", "--lib", "--features", "verify", "--", "--ignored"]
+script = '''
+cargo test --release --lib --features verify -- --ignored
+'''
 
 [tasks.verify-list]
 category = "Verification"
