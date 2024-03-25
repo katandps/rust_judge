@@ -6,7 +6,7 @@ use crate::{
 use serde::{Deserialize, Serialize};
 use std::{
     fs::{create_dir_all, read_dir, read_to_string},
-    path::PathBuf,
+    path::{Path, PathBuf},
     process::Command,
     time::Duration,
 };
@@ -21,8 +21,8 @@ impl Service for LibraryChecker {
         let problem = find_problem(problem_id)?;
         let in_dir = problem.dir.join("in");
         let out_dir = problem.dir.join("out");
-        create_dir_all(&in_dir)?;
-        create_dir_all(&out_dir)?;
+        create_dir_all(in_dir)?;
+        create_dir_all(out_dir)?;
         let info_path = problem.dir.join("info.toml");
         if !info_path.exists() {
             println!("info path is not found: {}", info_path.to_string_lossy());
@@ -97,7 +97,7 @@ struct TestCase {
 }
 
 impl TestCase {
-    fn verify(&self, root_dir: &PathBuf, attr: &VerifyAttribute, f: SolveFunc) -> Vec<JudgeResult> {
+    fn verify(&self, root_dir: &Path, attr: &VerifyAttribute, f: SolveFunc) -> Vec<JudgeResult> {
         fn case_file_name(name: &str, i: usize) -> String {
             let mut iter = name.rsplitn(2, '.');
             let after = iter.next();
@@ -173,7 +173,7 @@ impl TestCase {
             });
             (actual, now.elapsed())
         };
-        let sleep = time::sleep(Duration::from_millis(attr.time_limit_ms as u64));
+        let sleep = time::sleep(Duration::from_millis(attr.time_limit_ms));
         tokio::select! {
             _ = sleep => {
                 // うまく動作していない 度を越えたTLEはこちらで打ち切りたい

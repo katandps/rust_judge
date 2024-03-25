@@ -4,7 +4,7 @@ pub struct AtCoder;
 impl Service for AtCoder {
     const SERVICE_NAME: &'static str = "atcoder";
     fn url(_problem_id: &str) -> String {
-        format!("https://atcoder.jp/")
+        "https://atcoder.jp/".to_string()
     }
     fn fetch_testcases(_problem_id: &str) -> anyhow::Result<()> {
         Ok(())

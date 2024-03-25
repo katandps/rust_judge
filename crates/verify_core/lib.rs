@@ -21,7 +21,7 @@ use tempfile::NamedTempFile;
 
 use crate::judge::{Assertion, StaticAssertion};
 
-const APP_NAME: &'static str = "rust_judge";
+const APP_NAME: &str = "rust_judge";
 
 type SolveFunc = fn(&[u8], &mut Vec<u8>);
 
@@ -53,9 +53,8 @@ pub trait Verifiable: Solver {
     type SERVICE: Service;
 
     fn fetch_testcases() {
-        match Self::SERVICE::fetch_testcases(Self::PROBLEM_ID) {
-            Err(e) => panic!("{:?}", e),
-            _ => (),
+        if let Err(e) = Self::SERVICE::fetch_testcases(Self::PROBLEM_ID) {
+            panic!("{:?}", e)
         }
     }
     fn verify_inner(read: &[u8], write: &mut Vec<u8>) {
@@ -125,7 +124,7 @@ fn workspace_root_directory() -> anyhow::Result<String> {
 }
 
 fn app_cache_directory() -> PathBuf {
-    let mut path = cache_dir().unwrap_or_else(|| temp_dir());
+    let mut path = cache_dir().unwrap_or_else(temp_dir);
     path.push(crate::APP_NAME);
     path
 }
@@ -136,7 +135,7 @@ fn blocking_client() -> reqwest::Result<reqwest::blocking::Client> {
 
 fn read_file(path: &PathBuf) -> anyhow::Result<Vec<u8>> {
     let mut buf = Vec::new();
-    File::open(&path)?.read_to_end(&mut buf)?;
+    File::open(path)?.read_to_end(&mut buf)?;
     Ok(buf)
 }
 

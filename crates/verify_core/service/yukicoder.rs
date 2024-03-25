@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use std::{
     fs::{create_dir_all, File},
     io::{Read, Write},
-    path::PathBuf,
+    path::{Path, PathBuf},
 };
 use tokio::runtime;
 
@@ -57,7 +57,7 @@ impl YukicoderHeader {
         &self,
         problem_id: &str,
         client: blocking::Client,
-        problem_dir: &PathBuf,
+        problem_dir: &Path,
     ) -> anyhow::Result<()> {
         for target in &self.list {
             let in_url = format!("{BASE_URL}/{problem_id}/file/in/{target}");
@@ -66,8 +66,8 @@ impl YukicoderHeader {
                 .header("Authorization", get_session()?)
                 .send()?;
             let text = response.text()?;
-            let in_path = problem_dir.join("in").join(&target);
-            File::create(&in_path)?.write_all(&text.as_bytes())?;
+            let in_path = problem_dir.join("in").join(target);
+            File::create(&in_path)?.write_all(text.as_bytes())?;
 
             let out_url = format!("{BASE_URL}/{problem_id}/file/out/{target}");
             let response = client
@@ -75,17 +75,17 @@ impl YukicoderHeader {
                 .header("Authorization", get_session()?)
                 .send()?;
             let text = response.text()?;
-            let out_path = problem_dir.join("out").join(&target);
-            File::create(&out_path)?.write_all(&text.as_bytes())?;
+            let out_path = problem_dir.join("out").join(target);
+            File::create(&out_path)?.write_all(text.as_bytes())?;
         }
         Ok(())
     }
 
-    fn verify(&self, attr: &VerifyAttribute, problem_dir: &PathBuf, f: SolveFunc) -> VerifyResult {
+    fn verify(&self, attr: &VerifyAttribute, problem_dir: &Path, f: SolveFunc) -> VerifyResult {
         let cases: Vec<_> = self
             .list
             .iter()
-            .map(|case_name| verify(&attr, problem_dir, &case_name, f))
+            .map(|case_name| verify(attr, problem_dir, case_name, f))
             .collect();
         VerifyResult { cases }
     }
@@ -93,7 +93,7 @@ impl YukicoderHeader {
 
 fn verify(
     attr: &VerifyAttribute,
-    problem_dir: &PathBuf,
+    problem_dir: &Path,
     case_name: &str,
     f: SolveFunc,
 ) -> JudgeResult {
@@ -194,14 +194,14 @@ impl YukicoderTask {
         }
     }
 }
-fn create_problem_directory(problem_id: &str, base_dir: &PathBuf) -> anyhow::Result<PathBuf> {
-    let mut problem_dir = base_dir.clone();
+fn create_problem_directory(problem_id: &str, base_dir: &Path) -> anyhow::Result<PathBuf> {
+    let mut problem_dir = base_dir.to_path_buf();
     problem_dir.push("yukicoder");
-    problem_dir.push(&problem_id);
+    problem_dir.push(problem_id);
     let in_dir = problem_dir.join("in");
     let out_dir = problem_dir.join("out");
-    create_dir_all(&in_dir).with_context(|| "could not create in directory")?;
-    create_dir_all(&out_dir).with_context(|| "could not create out directory")?;
+    create_dir_all(in_dir).with_context(|| "could not create in directory")?;
+    create_dir_all(out_dir).with_context(|| "could not create out directory")?;
 
     Ok(problem_dir)
 }
@@ -209,7 +209,7 @@ fn create_problem_directory(problem_id: &str, base_dir: &PathBuf) -> anyhow::Res
 fn download_testcase_info(
     client: blocking::Client,
     problem_id: &str,
-    problem_dir: &PathBuf,
+    problem_dir: &Path,
 ) -> anyhow::Result<()> {
     let in_url = format!("{BASE_URL}/{problem_id}/file/in");
     let response = client
@@ -220,20 +220,20 @@ fn download_testcase_info(
         )
         .send()?;
     let text = &response.text()?;
-    let list: Vec<String> = serde_json::from_str(&text)?;
+    let list: Vec<String> = serde_json::from_str(text)?;
     let header = YukicoderHeader {
         problem_id: problem_id.to_string(),
         list,
     };
 
-    let header_path = header_path(&problem_dir);
-    File::create(&header_path)
+    let header_path = header_path(problem_dir);
+    File::create(header_path)
         .expect("could not create header file")
         .write_all(serde_json::to_string(&header)?.as_bytes())?;
     Ok(())
 }
 
-fn header_path(problem_dir: &PathBuf) -> PathBuf {
+fn header_path(problem_dir: &Path) -> PathBuf {
     problem_dir.join("header").with_extension("json")
 }
 

@@ -77,12 +77,12 @@ pub async fn verify_inner(
         let now = time::Instant::now();
         let actual = ::std::panic::catch_unwind(|| {
             let mut actual = Vec::new();
-            f(&assertion.input.as_bytes(), &mut actual);
+            f(assertion.input.as_bytes(), &mut actual);
             actual
         });
         (actual, now.elapsed())
     };
-    let sleep = time::sleep(Duration::from_millis(attr.time_limit_ms as u64));
+    let sleep = time::sleep(Duration::from_millis(attr.time_limit_ms));
     tokio::select! {
         _ = sleep => {
             // うまく動作していない 度を越えたTLEはこちらで打ち切りたい
@@ -161,11 +161,9 @@ impl Assertion for StaticAssertion<'_> {
                             }
                         }
                     }
-                } else {
-                    if expect != actual {
-                        println!("expect: {:?}\nactual: {:?}", expect_values, actual_values);
-                        return Ok(false);
-                    }
+                } else if expect != actual {
+                    println!("expect: {:?}\nactual: {:?}", expect_values, actual_values);
+                    return Ok(false);
                 }
             }
             Ok(true)
