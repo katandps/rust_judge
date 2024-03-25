@@ -1,0 +1,39 @@
+name: Rust
+
+on:
+  push:
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+    - uses: Swatinem/rust-cache@v2
+    - name: Install cargo make
+      run: cargo install cargo-make
+    
+    - name: cargo-fmt
+      run: cargo fmt --all -- --check
+
+    - name: cargo-clippy
+      run: cargo clippy --workspace --lib --tests
+
+    - name: cargo-build
+      run: cargo build --workspace --lib --tests
+
+    - name: cargo-test
+      run: cargo test --workspace --no-fail-fast
+
+    - name: Download Testcases
+      run: makers verify-download
+      env:
+        YUKICODER_TOKEN: ${{ secrets.YUKICODER_TOKEN }}
+
+    - name: Verify
+      run: makers verify-run
