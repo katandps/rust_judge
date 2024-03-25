@@ -11,13 +11,14 @@ syn = { version = "2.0.41", features = ["full", "extra-traits"] }
 quote = "1.0.33"
 proc-macro2 = "1.0.70"
 dirs = "5.0.1"
-reqwest = { version = "0.11.23", features = ["blocking", "json"] }
+reqwest = { version = "0.12.1", features = ["blocking", "json"] }
 tokio = { version = "1.35.1", features = ["macros"] }
 serde = { version = "1.0.195", features = ["derive"] }
 serde_json = "1.0.111"
 toml = "0.8.8"
 tempfile = "3.9.0"
 chrono = "0.4.34"
+log = "0.4.21"
 
 [lib]
 path = "lib.rs"

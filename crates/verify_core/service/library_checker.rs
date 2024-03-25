@@ -210,7 +210,12 @@ fn find_problem(problem_id: &str) -> anyhow::Result<Problem> {
             let info: ProblemInfo = toml::from_str(&data)?;
             path.pop();
             return Ok(Problem { dir: path, info });
+        } else {
+            log::error!(
+                "info.toml is not file. remove it! path: {:?}",
+                path.to_str()
+            );
         }
     }
-    panic!()
+    Err(anyhow::format_err!("info.toml is not found."))
 }
