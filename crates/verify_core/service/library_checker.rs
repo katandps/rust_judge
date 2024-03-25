@@ -48,18 +48,23 @@ fn root_dir() -> PathBuf {
 const LIBRARY_CHECKER_GIT_REPOSITORY: &str = "https://github.com/yosupo06/library-checker-problems";
 fn fetch_problem_repository() -> anyhow::Result<()> {
     let root_dir = root_dir();
+    log::debug!("root directory: {:?}", root_dir.to_str());
     if root_dir.exists() {
-        Command::new("git")
+        let result = Command::new("git")
             .arg("-C")
             .arg(root_dir.as_os_str())
             .arg("pull")
             .output()?;
+        log::debug!("pull stdout: {:?}", String::from_utf8(result.stdout));
+        log::debug!("pull stderr: {:?}", String::from_utf8(result.stderr));
     } else {
-        Command::new("git")
+        let result = Command::new("git")
             .arg("clone")
             .arg(LIBRARY_CHECKER_GIT_REPOSITORY)
             .arg(root_dir.as_os_str())
             .output()?;
+        log::debug!("clone stdout: {:?}", String::from_utf8(result.stdout));
+        log::debug!("clone stderr: {:?}", String::from_utf8(result.stderr));
     }
     Ok(())
 }
