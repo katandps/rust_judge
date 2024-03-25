@@ -62,10 +62,9 @@ fn verify(ident: &Ident) -> proc_macro2::TokenStream {
         #[cfg_attr(coverage_nightly, coverage(off))]
         fn #fn_name() {
             let res = <#ident as ::verify::Verifiable>::verify();
-            if let Ok(res) = res {
-                <#ident as ::verify::Verifiable>::output(&res, ::std::file!(), &#ident_str).expect("Failed to write result.");
-            } else {
-                panic!("Internal error: {}", #ident::PROBLEM_ID);
+            match res {
+                Ok(res) => <#ident as ::verify::Verifiable>::output(&res, ::std::file!(), &#ident_str).expect("Failed to write result."),
+                Err(e) => panic!("Internal error: {}: {}", #ident::PROBLEM_ID, e),
             }
         }
     }
