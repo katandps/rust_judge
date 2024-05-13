@@ -1,0 +1,18 @@
+[package]
+name = "cli"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "rust-judge-cli"
+path = "main.rs"
+
+[dependencies]
+env_logger = "0.11.3"
+dropbox-sdk = { version = "0.18.1", features = ["dbx_files"] }
+envy = "0.4.2"
+serde = "1.0.198"
+anyhow = { version = "1.0.82", features = ["backtrace"] }
+reqwest = { version = "0.12.4", features = ["blocking"] }
+serde_json = "1.0.116"
+clap = { version = "4.5.4", features = ["derive"] }
