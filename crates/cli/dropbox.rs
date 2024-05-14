@@ -1,6 +1,6 @@
 use anyhow::anyhow;
 use dropbox_sdk::client_trait;
-use dropbox_sdk::default_client::{NoauthDefaultClient, UserAuthDefaultClient};
+use dropbox_sdk::default_client::UserAuthDefaultClient;
 use dropbox_sdk::files;
 use dropbox_sdk::files::SharedLink;
 use dropbox_sdk::oauth2::{Authorization, AuthorizeUrlBuilder, Oauth2Type};
@@ -43,12 +43,11 @@ pub fn list() -> anyhow::Result<()> {
     let refresh_token = config
         .dropbox_refresh_token
         .ok_or(anyhow!("DROBOX_REFRESH_TOKEN is not set"))?;
-    let mut auth = Authorization::from_client_secret_refresh_token(
+    let auth = Authorization::from_client_secret_refresh_token(
         config.dropbox_app_key,
         config.dropbox_app_secret,
         refresh_token,
     );
-    let p = auth.obtain_access_token(NoauthDefaultClient::default());
     let client = UserAuthDefaultClient::new(auth);
     let mut problem_list = Vec::new();
     list_folder(&client, &mut problem_list)?;
