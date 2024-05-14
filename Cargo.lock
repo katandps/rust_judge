@@ -1522,7 +1522,6 @@ dependencies = [
  "anyhow",
  "chrono",
  "dirs",
- "dropbox-sdk",
  "log",
  "proc-macro2",
  "quote",
