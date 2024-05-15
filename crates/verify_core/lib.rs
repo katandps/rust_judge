@@ -26,9 +26,14 @@ const APP_NAME: &str = "rust_judge";
 type SolveFunc = fn(&[u8], &mut Vec<u8>);
 
 pub trait Service {
-    fn fetch_testcases(problem_id: &str) -> anyhow::Result<()>;
     fn verify(attr: VerifyAttribute, f: SolveFunc) -> anyhow::Result<VerifyResult>;
     fn url(problem_id: &str) -> String;
+    fn info_path() -> PathBuf {
+        let mut root = app_cache_directory();
+        root.push(Self::SERVICE_NAME);
+        root.set_extension("info");
+        root
+    }
     const SERVICE_NAME: &'static str;
 }
 
@@ -53,21 +58,14 @@ pub trait Verifiable: Solver {
     type SERVICE: Service;
 
     fn save_metadata() -> anyhow::Result<()> {
-        let mut root = app_cache_directory()?;
-        root.push(Self::SERVICE::SERVICE_NAME);
-        root.set_extension("info");
+        let info_path = Self::SERVICE::info_path();
+        create_dir_all(&info_path)?;
         OpenOptions::new()
             .create(true)
             .append(true)
-            .open(root)?
+            .open(info_path)?
             .write(format!("{}\n", Self::PROBLEM_ID).as_bytes())?;
         Ok(())
-    }
-
-    fn fetch_testcases() {
-        if let Err(e) = Self::SERVICE::fetch_testcases(Self::PROBLEM_ID) {
-            panic!("{:?}", e)
-        }
     }
     fn verify_inner(read: &[u8], write: &mut Vec<u8>) {
         Self::solve(read, write)
@@ -135,17 +133,11 @@ fn workspace_root_directory() -> anyhow::Result<String> {
     }
 }
 
-pub fn app_cache_directory() -> anyhow::Result<PathBuf> {
+pub fn app_cache_directory() -> PathBuf {
     let mut path = cache_dir().unwrap_or_else(temp_dir);
     path.push(crate::APP_NAME);
-    create_dir_all(&path)?;
-    Ok(path)
+    path
 }
-
-fn blocking_client() -> reqwest::Result<reqwest::blocking::Client> {
-    reqwest::blocking::Client::builder().build()
-}
-
 fn read_file(path: &PathBuf) -> anyhow::Result<Vec<u8>> {
     let mut buf = Vec::new();
     File::open(path)?.read_to_end(&mut buf)?;
@@ -156,4 +148,9 @@ fn save_temp_file(buf: &[u8]) -> anyhow::Result<NamedTempFile> {
     let mut file = NamedTempFile::new()?;
     file.write_all(buf)?;
     Ok(file)
+}
+
+#[derive(Clone, Debug)]
+pub struct ProblemForVerify {
+    pub problem_id: String,
 }

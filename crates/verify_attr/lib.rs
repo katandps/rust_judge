@@ -26,12 +26,10 @@ fn derive(input: TokenStream, service: Ident) -> TokenStream {
     // cliでtestcaseをfetchするようにする
     // verifyはファイルを読み込んで行う
     let save_metadata = save_metadata(&input.ident);
-    let fetch_testcases = fetch_testcases(&input.ident);
     let verify = verify(&input.ident);
     quote! {
         #save_metadata
         #implement
-        #fetch_testcases
         #verify
     }
     .into()
@@ -56,17 +54,6 @@ fn implement(ident: &Ident, service: &Ident) -> proc_macro2::TokenStream {
         #[cfg_attr(coverage_nightly, coverage(off))]
         impl ::verify::Verifiable for #ident {
             type SERVICE = ::verify::#service;
-        }
-    }
-}
-fn fetch_testcases(ident: &Ident) -> proc_macro2::TokenStream {
-    let fn_name: Ident = Ident::new(&format!("fetch_testcases_{ident}"), Span::call_site());
-    quote! {
-        #[cfg_attr(feature = "fetch_testcases", test)]
-        #[cfg_attr(feature = "fetch_testcases", ignore)]
-        #[cfg_attr(coverage_nightly, coverage(off))]
-        fn #fn_name() {
-            <#ident as ::verify::Verifiable>::fetch_testcases();
         }
     }
 }

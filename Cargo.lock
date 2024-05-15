@@ -1528,7 +1528,6 @@ dependencies = [
  "log",
  "proc-macro2",
  "quote",
- "reqwest",
  "serde",
  "serde_json",
  "syn",

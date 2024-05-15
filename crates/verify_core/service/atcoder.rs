@@ -1,9 +1,7 @@
-mod fetch_testcases;
-
 use serde::{Deserialize, Serialize};
 use std::{
     fs::{create_dir_all, File},
-    io::{Read, Write},
+    io::Read,
     path::{Path, PathBuf},
 };
 
@@ -17,17 +15,14 @@ impl Service for AtCoder {
     fn url(_problem_id: &str) -> String {
         "https://atcoder.jp/".to_string()
     }
-    fn fetch_testcases(_problem_id: &str) -> anyhow::Result<()> {
-        Ok(())
-    }
     fn verify(
         attr: crate::attribute::VerifyAttribute,
-        f: crate::SolveFunc,
+        _f: crate::SolveFunc,
     ) -> anyhow::Result<crate::judge::VerifyResult> {
         let problem_dir =
-            create_problem_directory(&attr.problem_id, &crate::app_cache_directory()?)?;
+            create_problem_directory(&attr.problem_id, &crate::app_cache_directory())?;
         let path = header_path(&problem_dir);
-        let cases = AtCoderHeader::from_file(&path);
+        let _cases = AtCoderHeader::from_file(&path);
         // Ok(cases.verify(&attr, &problem_dir, f))
         Ok(VerifyResult { cases: Vec::new() })
         // }
@@ -46,24 +41,13 @@ fn create_problem_directory(problem_id: &str, base_dir: &Path) -> anyhow::Result
     Ok(problem_dir)
 }
 
-#[derive(Clone, Debug, PartialEq)]
-enum AtCoderTask {
-    CreateProblemDirectory {},
-    FetchTestCaseInfo {},
-    DownloadTestCases {},
-    Done,
-}
-
 #[derive(Deserialize, Serialize, Debug)]
-struct AtCoderHeader {
-    problem_id: String,
-    list: Vec<String>,
+pub struct AtCoderHeader {
+    pub problem_id: String,
+    pub list: Vec<String>,
 }
-fn header_path(problem_dir: &Path) -> PathBuf {
+pub fn header_path(problem_dir: &Path) -> PathBuf {
     problem_dir.join("header").with_extension("json")
-}
-fn get_session() -> anyhow::Result<String> {
-    Ok(format!("bearer {}", std::env::var("DROPBOX_TOKEN")?))
 }
 
 impl AtCoderHeader {
@@ -76,5 +60,3 @@ impl AtCoderHeader {
         serde_json::from_slice(&buf).expect("saved header file is invalid")
     }
 }
-
-const URL: &str = "https://www.dropbox.com/sh/arnpe0ef5wds8cv/AAAk_SECQ2Nc6SVGii3rHX6Fa?dl=0";

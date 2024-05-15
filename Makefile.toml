@@ -65,7 +65,7 @@ env = { PYTHON = "python3" }
 description = "download verification problems"
 category = "Verification"
 script = '''
-cargo test --release --features fetch_testcases -- --ignored --test-threads=1
+cargo run -- fetch-testcase
 '''
 
 [tasks.verify-run]

@@ -4,23 +4,18 @@ use crate::{
     Service, SolveFunc,
 };
 use serde::{Deserialize, Serialize};
-use std::{
-    fs::{create_dir_all, File},
-    io::{Read, Write},
-    path::PathBuf,
-    time::Duration,
-};
-use tokio::runtime;
+use std::{fs::File, io::Read, path::PathBuf};
+use tokio::runtime::Builder;
 
 #[derive(Deserialize, Serialize, Debug)]
-struct AOJTestCaseHeaders {
+pub struct AOJTestCaseHeaders {
     // problemId: String,
-    headers: Vec<AOJTestCaseHeader>,
+    pub headers: Vec<AOJTestCaseHeader>,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
-struct AOJTestCaseHeader {
-    serial: u32,
+pub struct AOJTestCaseHeader {
+    pub serial: u32,
     name: String,
     // inputSize: i64,
     // outputSize:i64,
@@ -34,56 +29,6 @@ impl Service for AizuOnlineJudge {
         format!("https://onlinejudge.u-aizu.ac.jp/problems/{problem_id}")
     }
 
-    fn fetch_testcases(problem_id: &str) -> anyhow::Result<()> {
-        let mut problem_dir = crate::app_cache_directory()?;
-        problem_dir.push("aizu_online_judge");
-        problem_dir.push(problem_id);
-        if !problem_dir.exists() {
-            create_dir_all(&problem_dir)?;
-        }
-        let in_dir = problem_dir.join("in");
-        let out_dir = problem_dir.join("out");
-        create_dir_all(in_dir)?;
-        create_dir_all(out_dir)?;
-
-        let url = format!("https://judgedat.u-aizu.ac.jp/testcases/{problem_id}/header");
-        let client = crate::blocking_client()?;
-
-        let headers: AOJTestCaseHeaders = client
-            .get(url)
-            .timeout(Duration::from_secs(5))
-            .send()?
-            .json()?;
-        File::create(Self::header_path(problem_id)?)?
-            .write_all(serde_json::to_string(&headers)?.as_bytes())?;
-
-        for header in headers.headers {
-            let serial = header.serial;
-            let in_path = header.in_path(problem_id)?;
-            if !in_path.exists() {
-                let in_url =
-                    format!("https://judgedat.u-aizu.ac.jp/testcases/{problem_id}/{serial}/in");
-                let bytes = client
-                    .get(in_url)
-                    .timeout(Duration::from_secs(5))
-                    .send()?
-                    .bytes()?;
-                File::create(in_path)?.write_all(&bytes)?;
-            }
-            let out_path = header.out_path(problem_id)?;
-            if !out_path.exists() {
-                let out_url =
-                    format!("https://judgedat.u-aizu.ac.jp/testcases/{problem_id}/{serial}/out");
-                let bytes = client
-                    .get(out_url)
-                    .timeout(Duration::from_secs(5))
-                    .send()?
-                    .bytes()?;
-                File::create(out_path)?.write_all(&bytes)?;
-            }
-        }
-        Ok(())
-    }
     fn verify(attr: VerifyAttribute, f: SolveFunc) -> anyhow::Result<VerifyResult> {
         let mut buf = Vec::new();
         File::open(Self::header_path(&attr.problem_id)?)?.read_to_end(&mut buf)?;
@@ -95,12 +40,12 @@ impl Service for AizuOnlineJudge {
 
 impl AizuOnlineJudge {
     fn problem_dir_path(problem_id: &str) -> anyhow::Result<PathBuf> {
-        let mut problem_dir = crate::app_cache_directory()?;
+        let mut problem_dir = crate::app_cache_directory();
         problem_dir.push(Self::SERVICE_NAME);
         problem_dir.push(problem_id);
         Ok(problem_dir)
     }
-    fn header_path(problem_id: &str) -> anyhow::Result<PathBuf> {
+    pub fn header_path(problem_id: &str) -> anyhow::Result<PathBuf> {
         Ok(Self::problem_dir_path(problem_id)?
             .join("header")
             .with_extension("json"))
@@ -144,7 +89,7 @@ impl AOJTestCaseHeader {
             eps: attr.epsilon,
         };
         if in_path.exists() && out_path.exists() {
-            Ok(runtime::Builder::new_current_thread()
+            Ok(Builder::new_current_thread()
                 .enable_all()
                 .build()
                 .unwrap()
@@ -158,14 +103,14 @@ impl AOJTestCaseHeader {
         }
     }
 
-    fn in_path(&self, problem_id: &str) -> anyhow::Result<PathBuf> {
+    pub fn in_path(&self, problem_id: &str) -> anyhow::Result<PathBuf> {
         Ok(AizuOnlineJudge::problem_dir_path(problem_id)?
             .join("in")
             .join(&self.name)
             .with_extension("in"))
     }
 
-    fn out_path(&self, problem_id: &str) -> anyhow::Result<PathBuf> {
+    pub fn out_path(&self, problem_id: &str) -> anyhow::Result<PathBuf> {
         Ok(AizuOnlineJudge::problem_dir_path(problem_id)?
             .join("out")
             .join(&self.name)
