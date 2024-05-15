@@ -53,6 +53,13 @@ script = '''
 [tasks.verify]
 dependencies = ["verify-download", "verify-run"]
 
+[tasks.verify-metadata]
+description = "output testcase metadata"
+category = "Verification"
+script = '''
+cargo test --features save_metadata -- --ignored --test-threads=1
+'''
+
 [tasks.verify-download]
 env = { PYTHON = "python3" }
 description = "download verification problems"

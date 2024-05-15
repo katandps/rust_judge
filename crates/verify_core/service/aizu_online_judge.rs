@@ -35,7 +35,7 @@ impl Service for AizuOnlineJudge {
     }
 
     fn fetch_testcases(problem_id: &str) -> anyhow::Result<()> {
-        let mut problem_dir = crate::app_cache_directory();
+        let mut problem_dir = crate::app_cache_directory()?;
         problem_dir.push("aizu_online_judge");
         problem_dir.push(problem_id);
         if !problem_dir.exists() {
@@ -54,12 +54,12 @@ impl Service for AizuOnlineJudge {
             .timeout(Duration::from_secs(5))
             .send()?
             .json()?;
-        File::create(Self::header_path(problem_id))?
+        File::create(Self::header_path(problem_id)?)?
             .write_all(serde_json::to_string(&headers)?.as_bytes())?;
 
         for header in headers.headers {
             let serial = header.serial;
-            let in_path = header.in_path(problem_id);
+            let in_path = header.in_path(problem_id)?;
             if !in_path.exists() {
                 let in_url =
                     format!("https://judgedat.u-aizu.ac.jp/testcases/{problem_id}/{serial}/in");
@@ -70,7 +70,7 @@ impl Service for AizuOnlineJudge {
                     .bytes()?;
                 File::create(in_path)?.write_all(&bytes)?;
             }
-            let out_path = header.out_path(problem_id);
+            let out_path = header.out_path(problem_id)?;
             if !out_path.exists() {
                 let out_url =
                     format!("https://judgedat.u-aizu.ac.jp/testcases/{problem_id}/{serial}/out");
@@ -86,7 +86,7 @@ impl Service for AizuOnlineJudge {
     }
     fn verify(attr: VerifyAttribute, f: SolveFunc) -> anyhow::Result<VerifyResult> {
         let mut buf = Vec::new();
-        File::open(Self::header_path(&attr.problem_id))?.read_to_end(&mut buf)?;
+        File::open(Self::header_path(&attr.problem_id)?)?.read_to_end(&mut buf)?;
         let headers: AOJTestCaseHeaders = serde_json::from_slice(&buf)?;
         Ok(headers.verify(&attr, f))
     }
@@ -94,16 +94,16 @@ impl Service for AizuOnlineJudge {
 }
 
 impl AizuOnlineJudge {
-    fn problem_dir_path(problem_id: &str) -> PathBuf {
-        let mut problem_dir = crate::app_cache_directory();
+    fn problem_dir_path(problem_id: &str) -> anyhow::Result<PathBuf> {
+        let mut problem_dir = crate::app_cache_directory()?;
         problem_dir.push(Self::SERVICE_NAME);
         problem_dir.push(problem_id);
-        problem_dir
+        Ok(problem_dir)
     }
-    fn header_path(problem_id: &str) -> PathBuf {
-        Self::problem_dir_path(problem_id)
+    fn header_path(problem_id: &str) -> anyhow::Result<PathBuf> {
+        Ok(Self::problem_dir_path(problem_id)?
             .join("header")
-            .with_extension("json")
+            .with_extension("json"))
     }
 }
 
@@ -112,16 +112,22 @@ impl AOJTestCaseHeaders {
         let cases: Vec<_> = self
             .headers
             .iter()
-            .map(|header| header.verify(attr, f))
+            .map(|header| {
+                header.verify(attr, f).unwrap_or(JudgeResult {
+                    name: header.name.clone(),
+                    status: JudgeStatus::InternalError,
+                    exec_time_ms: 0,
+                })
+            })
             .collect();
         VerifyResult { cases }
     }
 }
 
 impl AOJTestCaseHeader {
-    fn verify(&self, attr: &VerifyAttribute, f: SolveFunc) -> JudgeResult {
-        let in_path = self.in_path(&attr.problem_id);
-        let out_path = self.out_path(&attr.problem_id);
+    fn verify(&self, attr: &VerifyAttribute, f: SolveFunc) -> anyhow::Result<JudgeResult> {
+        let in_path = self.in_path(&attr.problem_id)?;
+        let out_path = self.out_path(&attr.problem_id)?;
         let input_buf = crate::read_file(&in_path).unwrap_or_else(|_e| {
             println!("in file is not found {}:{}", attr.problem_id, self.name);
             Vec::new()
@@ -138,31 +144,31 @@ impl AOJTestCaseHeader {
             eps: attr.epsilon,
         };
         if in_path.exists() && out_path.exists() {
-            runtime::Builder::new_current_thread()
+            Ok(runtime::Builder::new_current_thread()
                 .enable_all()
                 .build()
                 .unwrap()
-                .block_on(judge::verify_inner(self.name.clone(), &assertion, attr, f))
+                .block_on(judge::verify_inner(self.name.clone(), &assertion, attr, f)))
         } else {
-            JudgeResult {
+            Ok(JudgeResult {
                 name: self.name.clone(),
                 status: JudgeStatus::InternalError,
                 exec_time_ms: 0,
-            }
+            })
         }
     }
 
-    fn in_path(&self, problem_id: &str) -> PathBuf {
-        AizuOnlineJudge::problem_dir_path(problem_id)
+    fn in_path(&self, problem_id: &str) -> anyhow::Result<PathBuf> {
+        Ok(AizuOnlineJudge::problem_dir_path(problem_id)?
             .join("in")
             .join(&self.name)
-            .with_extension("in")
+            .with_extension("in"))
     }
 
-    fn out_path(&self, problem_id: &str) -> PathBuf {
-        AizuOnlineJudge::problem_dir_path(problem_id)
+    fn out_path(&self, problem_id: &str) -> anyhow::Result<PathBuf> {
+        Ok(AizuOnlineJudge::problem_dir_path(problem_id)?
             .join("out")
             .join(&self.name)
-            .with_extension("out")
+            .with_extension("out"))
     }
 }

@@ -31,7 +31,7 @@ impl Service for Yukicoder {
     }
     fn verify(attr: VerifyAttribute, f: SolveFunc) -> anyhow::Result<VerifyResult> {
         let problem_dir =
-            create_problem_directory(&attr.problem_id, &crate::app_cache_directory())?;
+            create_problem_directory(&attr.problem_id, &crate::app_cache_directory()?)?;
         let path = header_path(&problem_dir);
         let cases = YukicoderHeader::from_file(&path);
         Ok(cases.verify(&attr, &problem_dir, f))
@@ -154,7 +154,7 @@ impl YukicoderTask {
     fn new(problem_id: &str) -> Self {
         Self::CreateProblemDirectory {
             problem_id: problem_id.into(),
-            base_dir: crate::app_cache_directory(),
+            base_dir: crate::app_cache_directory().unwrap(),
         }
     }
     fn run(self) -> anyhow::Result<Self> {

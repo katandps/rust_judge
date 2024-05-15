@@ -22,14 +22,31 @@ pub fn derive_atcoder(input: TokenStream) -> TokenStream {
 fn derive(input: TokenStream, service: Ident) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
     let implement = implement(&input.ident, &service);
+    // 問題情報をファイルに出力する
+    // cliでtestcaseをfetchするようにする
+    // verifyはファイルを読み込んで行う
+    let save_metadata = save_metadata(&input.ident);
     let fetch_testcases = fetch_testcases(&input.ident);
     let verify = verify(&input.ident);
     quote! {
+        #save_metadata
         #implement
         #fetch_testcases
         #verify
     }
     .into()
+}
+
+fn save_metadata(ident: &Ident) -> proc_macro2::TokenStream {
+    let fn_name: Ident = Ident::new(&format!("save_metadata_{ident}"), Span::call_site());
+    quote! {
+        #[cfg_attr(feature = "save_metadata", test)]
+        #[cfg_attr(feature = "save_metadata", ignore)]
+        #[cfg_attr(coverage_nightly, coverage(off))]
+        fn #fn_name() -> anyhow::Result<()>{
+            <#ident as ::verify::Verifiable>::save_metadata()
+        }
+    }
 }
 
 fn implement(ident: &Ident, service: &Ident) -> proc_macro2::TokenStream {
@@ -43,7 +60,7 @@ fn implement(ident: &Ident, service: &Ident) -> proc_macro2::TokenStream {
     }
 }
 fn fetch_testcases(ident: &Ident) -> proc_macro2::TokenStream {
-    let fn_name = Ident::new(&format!("fetch_testcases_{ident}"), Span::call_site());
+    let fn_name: Ident = Ident::new(&format!("fetch_testcases_{ident}"), Span::call_site());
     quote! {
         #[cfg_attr(feature = "fetch_testcases", test)]
         #[cfg_attr(feature = "fetch_testcases", ignore)]

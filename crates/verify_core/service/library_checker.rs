@@ -28,7 +28,7 @@ impl Service for LibraryChecker {
             println!("info path is not found: {}", info_path.to_string_lossy());
         }
         Command::new(option_env!("PYTHON").unwrap_or("python"))
-            .arg(root_dir().join("generate.py"))
+            .arg(root_dir()?.join("generate.py"))
             .arg(problem.dir.join("info.toml"))
             .output()?;
         Ok(())
@@ -42,12 +42,12 @@ impl Service for LibraryChecker {
     }
 }
 
-fn root_dir() -> PathBuf {
-    crate::app_cache_directory().join("library_checker")
+fn root_dir() -> anyhow::Result<PathBuf> {
+    Ok(crate::app_cache_directory()?.join("library_checker"))
 }
 const LIBRARY_CHECKER_GIT_REPOSITORY: &str = "https://github.com/yosupo06/library-checker-problems";
 fn fetch_problem_repository() -> anyhow::Result<()> {
-    let root_dir = root_dir();
+    let root_dir = root_dir()?;
     log::debug!("root directory: {:?}", root_dir.to_str());
     if root_dir.exists() {
         let result = Command::new("git")
@@ -208,7 +208,7 @@ impl TestCase {
 }
 
 fn find_problem(problem_id: &str) -> anyhow::Result<Problem> {
-    for entry in read_dir(root_dir())?.flatten() {
+    for entry in read_dir(root_dir()?)?.flatten() {
         let mut path = entry.path().join(problem_id).join("info.toml");
         if path.is_file() {
             let data = read_to_string(&path)?;

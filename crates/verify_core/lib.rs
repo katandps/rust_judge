@@ -11,7 +11,7 @@ use serde::Deserialize;
 use std::{
     borrow::Cow,
     env::temp_dir,
-    fs::File,
+    fs::{create_dir_all, File, OpenOptions},
     io::{Read, Write},
     path::PathBuf,
     process::Command,
@@ -51,6 +51,18 @@ pub trait Solver {
 
 pub trait Verifiable: Solver {
     type SERVICE: Service;
+
+    fn save_metadata() -> anyhow::Result<()> {
+        let mut root = app_cache_directory()?;
+        root.push(Self::SERVICE::SERVICE_NAME);
+        root.set_extension("info");
+        OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(root)?
+            .write(format!("{}\n", Self::PROBLEM_ID).as_bytes())?;
+        Ok(())
+    }
 
     fn fetch_testcases() {
         if let Err(e) = Self::SERVICE::fetch_testcases(Self::PROBLEM_ID) {
@@ -123,10 +135,11 @@ fn workspace_root_directory() -> anyhow::Result<String> {
     }
 }
 
-fn app_cache_directory() -> PathBuf {
+pub fn app_cache_directory() -> anyhow::Result<PathBuf> {
     let mut path = cache_dir().unwrap_or_else(temp_dir);
     path.push(crate::APP_NAME);
-    path
+    create_dir_all(&path)?;
+    Ok(path)
 }
 
 fn blocking_client() -> reqwest::Result<reqwest::blocking::Client> {
