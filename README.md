@@ -4,13 +4,13 @@
 
 add for library root file
 
-```
+```rust
 #![cfg_attr(coverage_nightly, feature(coverage_attribute))]
 ```
 
 and implement Solver and set service by derive macro
 
-```
+```rust
 use verify::{AizuOnlineJudge, Solver};
 
 /// # Hello World
